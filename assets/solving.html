@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Solving Challenge | Parallax API</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+            padding: 48px 36px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 1s ease;
+        }
+
+        .loader {
+            border: 6px solid #e0e0e0;
+            border-top: 6px solid #2a5298;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 24px auto;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 2rem;
+            color: #1e3c72;
+            letter-spacing: 1px;
+        }
+
+        p {
+            color: #333;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .api {
+            color: #2a5298;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="loader"></div>
+        <h1>Solving Challenge...</h1>
+        <p>
+            Please wait while your challenge is being solved<br>
+            by the <span class="api">Parallax API</span>.
+        </p>
+    </div>
+</body>
+
+</html>
