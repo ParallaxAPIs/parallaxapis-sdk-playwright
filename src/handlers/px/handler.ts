@@ -17,7 +17,7 @@ export class PerimeterxHandler extends SDKHelper {
 
     private constructor(config: Config, ctx: BrowserContext, page: Page, sdk: PerimeterxSDK, fallbackOrigin: string) {
         super(
-            "Parallax perimeterx handler",
+            "ParallaxAPIs PerimeterX Handler",
             page,
         );
 

@@ -21,7 +21,7 @@ export default class DatadomeHandler extends SDKHelper {
 
     private constructor(config: Config, ctx: BrowserContext, page: Page, sdk: DatadomeSDK) {
         super(
-            "Parallax datadome handler",
+            "ParallaxAPIs Datadome Handler",
             page,
         );
 
