@@ -123,7 +123,7 @@ export class PerimeterxHandler extends SDKHelper {
                 try {
                     this.pxData = await this.solveInit();
                 } catch (error) {
-                    console.log("Error while generating inti cookie:", error)
+                    this.log("Error while generating inti cookie:", error)
                 }
             }, initGenerationInterval);
         });
@@ -149,7 +149,7 @@ export class PerimeterxHandler extends SDKHelper {
     // Abort on collector scripts, we don't want them to succeed
     private async handleCollectorScriptsBlock() {
         await this.page.route(collectorScriptUrlRe, async (route) => {
-            console.log("Blocked collector script.")
+            this.log("Blocked collector script.")
             await route.abort();
         });
     }
