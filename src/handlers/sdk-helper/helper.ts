@@ -14,9 +14,7 @@ export class SDKHelper {
     }
 
     protected async getOrigin(): Promise<string> {
-        // @ts-ignore
-        const origin = await this.page.evaluate(() => window.origin);
-        if (origin == "null") return "";
-        return origin;
+    const u = new URL(await this.page.url());
+    return u.origin === 'null' ? '' : u.origin;
     }
 }
