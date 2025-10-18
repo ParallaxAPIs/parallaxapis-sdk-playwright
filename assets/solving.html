@@ -1,101 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <title>Solving Challenge | Parallax API</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solving Challenge</title>
     <style>
-        html,
-        body {
-            height: 100%;
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
         body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a2332 50%, #0f1923 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
         }
 
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 18px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
-            padding: 48px 36px;
-            text-align: center;
-            max-width: 400px;
+        /* <CHANGE> Added grid background overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        .card {
+            background: rgba(15, 25, 35, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 229, 255, 0.1);
+            border-radius: 24px;
+            padding: 60px 80px;
+            max-width: 600px;
             width: 90%;
-            animation: fadeIn 1s ease;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1;
         }
 
         .loader {
-            border: 6px solid #e0e0e0;
-            border-top: 6px solid #2a5298;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            background: #00e5ff;
             border-radius: 50%;
-            width: 56px;
-            height: 56px;
-            margin: 0 auto 24px auto;
-            animation: spin 1s linear infinite;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+            animation: breathe 1.5s ease-in-out infinite;
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+        .dot:nth-child(1) {
+            animation-delay: 0s;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
 
-            to {
-                opacity: 1;
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes breathe {
+            0%, 100% {
                 transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0.7;
             }
         }
 
         h1 {
-            margin: 0 0 12px 0;
-            font-size: 2rem;
-            color: #1e3c72;
-            letter-spacing: 1px;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
         }
 
-        p {
-            color: #333;
-            font-size: 1.1rem;
-            margin: 0;
+        .subtitle {
+            font-size: 18px;
+            color: #a0aec0;
+            line-height: 1.6;
+            margin-bottom: 40px;
         }
 
-        .api {
-            color: #2a5298;
-            font-weight: bold;
-            letter-spacing: 0.5px;
+        .api-name {
+            color: #00e5ff;
+            font-weight: 600;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background: rgba(0, 229, 255, 0.05);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            border-radius: 50px;
+            font-size: 14px;
+            color: #00e5ff;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #00e5ff;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                box-shadow: 0 0 8px rgba(0, 229, 255, 0.8);
+            }
+            50% {
+                opacity: 0.5;
+                box-shadow: 0 0 4px rgba(0, 229, 255, 0.4);
+            }
         }
     </style>
 </head>
-
 <body>
-    <div class="container">
-        <div class="loader"></div>
-        <h1>Solving Challenge!</h1>
-        <p>
+    <div class="card">
+        <div class="loader">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+        
+        <h1>Solving Challenge</h1>
+        
+        <p class="subtitle">
             Please wait while your challenge is being solved<br>
-            by the <span class="api">Parallax API</span>.
+            by <span class="api-name">ParallaxAPIs</span>
         </p>
+        
+        <div class="status">
+            <div class="status-dot"></div>
+            Processing
+        </div>
     </div>
 </body>
-
 </html>
