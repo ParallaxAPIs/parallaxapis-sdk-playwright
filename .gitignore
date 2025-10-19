@@ -1,6 +1,9 @@
 # dependencies (bun install)
 node_modules
 
+.npmignore
+npmignore
+
 # output
 out
 dist
