@@ -1,7 +1,7 @@
+import { Mutex } from "async-mutex";
 import fs from "fs";
+import { DatadomeSDK, ProductType } from "parallax-sdk-ts";
 import { chromium, type Browser, type BrowserContext, type BrowserContextOptions, type LaunchOptions, type Page, type Request, type Response } from 'playwright';
-import { DatadomeSDK } from "parallax-sdk-ts";
-import { ProductType } from "parallax-sdk-ts";
 import type { Config } from "../../models/config";
 import { SDKHelper } from "../sdk-helper/helper";
 
@@ -18,6 +18,7 @@ export default class DatadomeHandler extends SDKHelper {
     private cfg: Config;
     private blockedRequest: Request | undefined
     private tagsProcessing: boolean = false;
+    private mu: Mutex = new Mutex();
 
     private constructor(config: Config, ctx: BrowserContext, page: Page, sdk: DatadomeSDK) {
         super(
@@ -161,11 +162,17 @@ export default class DatadomeHandler extends SDKHelper {
             const request = route.request();
             const postData = request.postData();
 
-            if (this.tagsProcessing || !postData || request.method() !== 'POST' || !postData.includes('ddk')) {
-                return await route.continue();
-            };
+            const release = await this.mu.acquire();
 
-            this.tagsProcessing = true;
+            try {
+                if (this.tagsProcessing || !postData || request.method() !== 'POST' || !postData.includes('ddk')) {
+                    return await route.continue();
+                };
+
+                this.tagsProcessing = true;
+            } finally {
+                release();
+            }
 
             const response = await this.page.evaluate(async ({ url, options }) => {
                 try {
