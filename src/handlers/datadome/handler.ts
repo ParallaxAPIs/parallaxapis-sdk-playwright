@@ -159,76 +159,80 @@ export default class DatadomeHandler extends SDKHelper {
     // Blocks datadome collector script, and replaces response body with cookie from an api.
     private async replaceTagsCookie(): Promise<void> {
         await this.page.route('**/js', async (route) => {
-            const request = route.request();
-            const postData = request.postData();
-
-            const release = await this.mu.acquire();
-
             try {
-                if (this.tagsProcessing || !postData || request.method() !== 'POST' || !postData.includes('ddk')) {
-                    return await route.continue();
-                };
+                const request = route.request();
+                const postData = request.postData();
 
-                this.tagsProcessing = true;
-            } finally {
-                release();
-            }
+                const release = await this.mu.acquire();
 
-            const response = await this.page.evaluate(async ({ url, options }) => {
                 try {
-                    const response = await fetch(url, {
-                        method: options.method,
-                        headers: options.headers,
-                        body: options.body
-                    });
-
-                    const body = await response.json();
-
-                    return {
-                        success: true,
-                        status: response.status,
-                        headers: Object.fromEntries(response.headers.entries()),
-                        body: body
+                    if (this.tagsProcessing || !postData || request.method() !== 'POST' || !postData.includes('ddk')) {
+                        return await route.continue();
                     };
-                } catch {
-                    return { success: false };
+
+                    this.tagsProcessing = true;
+                } finally {
+                    release();
                 }
-            }, {
-                url: request.url(), options: {
-                    method: request.method(),
-                    headers: request.headers(),
-                    body: request.postData()
-                }
-            });
 
-            if (!response.success) return route.abort();
+                const response = await this.page.evaluate(async ({ url, options }) => {
+                    try {
+                        const response = await fetch(url, {
+                            method: options.method,
+                            headers: options.headers,
+                            body: options.body
+                        });
 
-            const bodyJson = response.body as { cookie: string };
+                        const body = await response.json();
 
-            const solveResult = await this.sdk.generateDatadomeTagsCookie({
-                site: this.cfg.site,
-                region: this.cfg.region,
-                proxyregion: this.cfg.proxyRegion,
-                proxy: this.cfg.proxy,
-                data: { cid: "null" },
-            });
+                        return {
+                            success: true,
+                            status: response.status,
+                            headers: Object.fromEntries(response.headers.entries()),
+                            body: body
+                        };
+                    } catch {
+                        return { success: false };
+                    }
+                }, {
+                    url: request.url(), options: {
+                        method: request.method(),
+                        headers: request.headers(),
+                        body: request.postData()
+                    }
+                });
 
-            // We get response like this, from here we want to get a cookie template, so we don't need to set domain and other stuff 
-            // manually, .slice just strips response so we can put our own cookie in this template.
-            // {"cookie":"datadome=<Cookie with 128 length>; Max-Age=31536000; Domain=.origin.com; Path=/; Secure; SameSite=Lax"}
-            const template = bodyJson.cookie.slice("datadome=".length + DATADOME_COOKIE_LENGTH);
-            const bodyCookie = `${solveResult.message}${template}`;
+                if (!response.success) return route.abort();
 
-            this.log("Solved tags payload.")
+                const bodyJson = response.body as { cookie: string };
 
-            await route.fulfill({
-                status: response.status,
-                headers: response.headers,
-                body: JSON.stringify({
-                    "status": response.status,
-                    "cookie": bodyCookie
-                })
-            });
+                const solveResult = await this.sdk.generateDatadomeTagsCookie({
+                    site: this.cfg.site,
+                    region: this.cfg.region,
+                    proxyregion: this.cfg.proxyRegion,
+                    proxy: this.cfg.proxy,
+                    data: { cid: "null" },
+                });
+
+                // We get response like this, from here we want to get a cookie template, so we don't need to set domain and other stuff 
+                // manually, .slice just strips response so we can put our own cookie in this template.
+                // {"cookie":"datadome=<Cookie with 128 length>; Max-Age=31536000; Domain=.origin.com; Path=/; Secure; SameSite=Lax"}
+                const template = bodyJson.cookie.slice("datadome=".length + DATADOME_COOKIE_LENGTH);
+                const bodyCookie = `${solveResult.message}${template}`;
+
+                this.log("Solved tags payload.")
+
+                await route.fulfill({
+                    status: response.status,
+                    headers: response.headers,
+                    body: JSON.stringify({
+                        "status": response.status,
+                        "cookie": bodyCookie
+                    })
+                });
+            } catch {
+                await route.continue();
+            }
         });
     }
 }

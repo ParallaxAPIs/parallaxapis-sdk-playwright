@@ -1,6 +1,6 @@
-import { chromium, type Browser, type BrowserContext, type Page, type Response } from "playwright";
-import { PerimeterxSDK } from "parallax-sdk-ts";
 import type { GeneratePxCookiesResponse } from "parallax-sdk-ts";
+import { PerimeterxSDK } from "parallax-sdk-ts";
+import { chromium, type Browser, type BrowserContext, type Page, type Response } from "playwright";
 import type { Config } from "../../models/config";
 import type { BrowserInitConfig } from "../datadome/handler";
 import { SDKHelper } from "../sdk-helper/helper";
@@ -123,7 +123,7 @@ export class PerimeterxHandler extends SDKHelper {
                 try {
                     this.pxData = await this.solveInit();
                 } catch (error) {
-                    this.log("Error while generating inti cookie:", error)
+                    this.log(`Error while generating inti cookie: ${error}`)
                 }
             }, initGenerationInterval);
         });
