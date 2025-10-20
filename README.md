@@ -1,6 +1,17 @@
 # 🚀 Parallax Playwright SDK: Datadome & Perimeterx
 
-Easily interact with Datadome and Perimeterx anti-bot solutions using a simple Playwright SDK. Fast integration, clear API! ✨
+**Browser-based Playwright integration for bypassing DataDome and PerimeterX anti-bot protection.**
+
+Perfect for developers who prefer browser automation over request-based approaches. This SDK seamlessly integrates with Playwright, automatically handling cookie generation and injection while you focus on your automation logic.
+
+## ✨ Why Choose the Playwright SDK?
+
+- **🎭 Native Playwright Integration**: Works directly with your existing Playwright workflows
+- **🔄 Automatic Cookie Handling**: Transparent cookie generation and injection - set it and forget it
+- **🖥️ Full Browser Context**: Real browser environment for sites requiring complex JavaScript execution
+- **⚡ Zero Configuration**: Simple `.init()` method handles all setup automatically
+- **🎯 Flexible Options**: Supports custom browser launch options, contexts, and proxy configurations
+- **🛠️ Production-Ready**: Battle-tested with complex SPAs and JavaScript-heavy websites
 
 ---
 
