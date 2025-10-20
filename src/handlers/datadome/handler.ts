@@ -38,7 +38,8 @@ export default class DatadomeHandler extends SDKHelper {
 
         const sdk = new DatadomeSDK({
             apiKey: config.apiKey,
-            apiHost: config.apiHost
+            apiHost: config.apiHost,
+            ...config.sdkConfig,
         });
 
         const browser = await chromium.launch({

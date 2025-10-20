@@ -33,7 +33,8 @@ export class PerimeterxHandler extends SDKHelper {
 
         const sdk = new PerimeterxSDK({
             apiKey: config.apiKey,
-            apiHost: config.apiHost
+            apiHost: config.apiHost,
+            ...config.sdkConfig,
         });
 
         const browser = await chromium.launch({

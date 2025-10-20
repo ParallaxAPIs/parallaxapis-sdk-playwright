@@ -1,4 +1,5 @@
 import type { ProxyAddress } from "parallax-sdk-ts";
+import type { Dispatcher } from "undici";
 
 export type Config = {
     apiKey: string,
@@ -7,4 +8,10 @@ export type Config = {
     proxyRegion: string,
     region: string,
     site: string
+
+    sdkConfig: {
+        timeout?: number
+        bodyTimeout?: number
+        dispatcher?: Dispatcher
+    }
 };
