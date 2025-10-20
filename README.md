@@ -261,4 +261,6 @@ MIT
 
 ---
 
-Made with ❤️ by Parallax Systems
+## 🔑 Keywords
+
+**DataDome bypass** • **PerimeterX bypass** • **Anti-bot bypass** • **Bot detection bypass** • **CAPTCHA solver** • **Playwright anti-bot** • **Browser automation** • **Playwright web scraping** • **DataDome Playwright SDK** • **PerimeterX Playwright SDK** • **Automated browser bypass** • **Playwright CAPTCHA solver** • **Browser fingerprinting bypass** • **Headless browser anti-bot** • **Playwright automation** • **Challenge solver Playwright** • **Browser-based bypass** • **Playwright bot detection**
