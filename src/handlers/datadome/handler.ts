@@ -1,6 +1,6 @@
 import { Mutex } from "async-mutex";
 import fs from "fs";
-import { DatadomeSDK, ProductType } from "parallax-sdk-ts";
+import { DatadomeSDK } from "parallax-sdk-ts";
 import { chromium, type Browser, type BrowserContext, type BrowserContextOptions, type LaunchOptions, type Page, type Request, type Response } from 'playwright';
 import type { Config } from "../../models/config";
 import { SDKHelper } from "../sdk-helper/helper";
@@ -205,13 +205,12 @@ export default class DatadomeHandler extends SDKHelper {
 
             const bodyJson = response.body as { cookie: string };
 
-            const solveResult = await this.sdk.generateCookie({
-                data: { b: "", cid: "null", e: "", initialCid: "", s: "" },
-                pd: ProductType.Init,
-                proxy: this.cfg.proxy,
-                proxyregion: this.cfg.proxyRegion,
+            const solveResult = await this.sdk.generateDatadomeTagsCookie({
+                site: this.cfg.site,
                 region: this.cfg.region,
-                site: this.cfg.site
+                proxyregion: this.cfg.proxyRegion,
+                proxy: this.cfg.proxy,
+                data: { cid: "null" },
             });
 
             // We get response like this, from here we want to get a cookie template, so we don't need to set domain and other stuff 
