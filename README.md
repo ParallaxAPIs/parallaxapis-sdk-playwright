@@ -163,8 +163,6 @@ main().catch(console.error);
 
 ## 🧑‍💻 Datadome Usage
 
-## Pretty much the same for datadome
-
 ```javascript
 import DatadomeHandler from 'parallaxapis-sdk-playwright';
 
