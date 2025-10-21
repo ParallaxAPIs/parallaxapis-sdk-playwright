@@ -215,9 +215,6 @@ export default class DatadomeHandler extends SDKHelper {
                     data: { cid: "null" },
                 });
 
-                // We get response like this, from here we want to get a cookie template, so we don't need to set domain and other stuff 
-                // manually, .slice just strips response so we can put our own cookie in this template.
-                // {"cookie":"datadome=<Cookie with 128 length>; Max-Age=31536000; Domain=.origin.com; Path=/; Secure; SameSite=Lax"}
                 const template = bodyJson.cookie.slice("datadome=".length + DATADOME_COOKIE_LENGTH);
                 const bodyCookie = `${solveResult.message}${template}`;
 
