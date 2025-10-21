@@ -53,7 +53,7 @@ import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
 async function main() {
     const [page, browser] = await PerimeterxHandler.init({
         apiKey: "PX-KEY",
-        apiHost: "parallaxhost.com",
+        apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,
         proxyRegion: "eu",
         region: "com",
@@ -87,7 +87,7 @@ import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
 async function main() {
     const [page, browser] = await PerimeterxHandler.init({
         apiKey: "PX-KEY",
-        apiHost: "parallaxhost.com",
+        apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,
         proxyRegion: "eu",
         region: "com",
@@ -131,7 +131,7 @@ import { ProxyAgent } from 'undici';
 async function main() {
     const [page, browser] = await PerimeterxHandler.init({
         apiKey: "PX-KEY",
-        apiHost: "parallaxhost.com",
+        apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,
         proxyRegion: "eu",
         region: "com",
@@ -171,7 +171,7 @@ import DatadomeHandler from 'parallaxapis-sdk-playwright';
 async function main() {
     const [page, browser] = await DatadomeHandler.init({
         apiKey: "DD-KEY",
-        apiHost: "parallaxhost.com",
+        apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,
         proxyRegion: "eu",
         region: "com",
@@ -201,7 +201,7 @@ import DatadomeHandler from 'parallaxapis-sdk-playwright';
 async function main() {
     const [page, browser] = await DatadomeHandler.init({
         apiKey: "DD-KEY",
-        apiHost: "parallaxhost.com",
+        apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,
         proxyRegion: "eu",
         region: "com",
@@ -242,7 +242,7 @@ import { Agent } from 'undici';
 async function main() {
     const [page, browser] = await DatadomeHandler.init({
         apiKey: "DD-KEY",
-        apiHost: "parallaxhost.com",
+        apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,
         proxyRegion: "eu",
         region: "com",
