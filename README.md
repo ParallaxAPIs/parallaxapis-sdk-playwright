@@ -65,8 +65,8 @@ async function main() {
     
     ...
     
-        You can use your browser solution however you want, parallax 
-        will handle everything for you. 
+        You can use your browser solution however you want, ParallaxAPIs 
+        will handle the rest for you. 
         
     ...
     
@@ -108,8 +108,8 @@ async function main() {
     
     ...
     
-        You can use your browser solution however you want, parallax 
-        will handle everything for you. 
+        You can use your browser solution however you want, ParallaxAPIs 
+        will handle the rest for you. 
         
     ...
     
@@ -183,7 +183,7 @@ async function main() {
     ...
     
         You can use your browser solution however you want, parallax 
-        will handle everything for you. 
+        will handle the rest for you. 
         
     ...
     
@@ -222,7 +222,7 @@ async function main() {
     ...
     
         You can use your browser solution however you want, parallax 
-        will handle everything for you. 
+        will handle the rest for you. 
         
     ...
     
