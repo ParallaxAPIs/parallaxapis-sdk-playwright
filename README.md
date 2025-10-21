@@ -33,6 +33,8 @@ Get started with ParallaxAPIs SDK's in under 5 minutes:
 npm install parallaxapis-sdk-playwright
 ```
 
+![NPM Install Playwright Demo](npminstallplaywright.gif)
+
 ---
 
 ## 🧑‍💻 PX Usage
