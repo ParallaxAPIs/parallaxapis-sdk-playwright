@@ -1,4 +1,4 @@
-# 🚀 Parallax Playwright SDK: Datadome & Perimeterx
+# 🚀 ParallaxAPIs Playwright SDK: Datadome & Perimeterx
 
 **Browser-based Playwright integration for bypassing DataDome and PerimeterX anti-bot protection.**
 
@@ -30,7 +30,7 @@ Get started with ParallaxAPIs SDK's in under 5 minutes:
 ## 📦 Installation
 
 ```bash
-npm install parallax-sdk-playwright
+npm install parallaxapis-sdk-playwright
 ```
 
 ---
@@ -42,7 +42,7 @@ npm install parallax-sdk-playwright
 Init methods in sdk will create a browser, and plug solvers for you. You can just create them with our SDK and you are ready to go!
 
 ```javascript
-import { PerimeterxHandler } from 'parallax-sdk-playwright';
+import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
 
 async function main() {
     const [page, browser] = await PerimeterxHandler.init({
@@ -76,7 +76,7 @@ main().catch(console.error);
 You can also provide any browser, and context options which you need
 
 ```javascript
-import { PerimeterxHandler } from 'parallax-sdk-playwright';
+import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
 
 async function main() {
     const [page, browser] = await PerimeterxHandler.init({
@@ -119,7 +119,7 @@ main().catch(console.error);
 You can configure SDK-level settings using the `sdkConfig` option in the initialization config. This allows you to customize request timeouts and use custom dispatchers.
 
 ```javascript
-import { PerimeterxHandler } from 'parallax-sdk-playwright';
+import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
 import { ProxyAgent } from 'undici';
 
 async function main() {
@@ -160,7 +160,7 @@ main().catch(console.error);
 ## Pretty much the same for datadome
 
 ```javascript
-import DatadomeHandler from 'parallax-sdk-playwright';
+import DatadomeHandler from 'parallaxapis-sdk-playwright';
 
 async function main() {
     const [page, browser] = await DatadomeHandler.init({
@@ -190,7 +190,7 @@ main().catch(console.error);
 You can also provide any browser, and context options which you need
 
 ```javascript
-import DatadomeHandler from 'parallax-sdk-playwright';
+import DatadomeHandler from 'parallaxapis-sdk-playwright';
 
 async function main() {
     const [page, browser] = await DatadomeHandler.init({
@@ -230,7 +230,7 @@ main().catch(console.error);
 ## Datadome with SDK Configuration
 
 ```javascript
-import DatadomeHandler from 'parallax-sdk-playwright';
+import DatadomeHandler from 'parallaxapis-sdk-playwright';
 import { Agent } from 'undici';
 
 async function main() {
@@ -273,16 +273,21 @@ main().catch(console.error);
 
 ## 📚 Documentation & Help
 
-- Full API docs: [GitHub](https://github.com/parallaxsystems/parallax-sdk-playwright)
-- Issues & support: [GitHub Issues](https://github.com/parallaxsystems/parallax-sdk-playwright/issues)
+- Full API docs & support: [Discord](https://www.parallaxsystems.io/join?s=gh)
 
----
+
+
+## 🌟 Contributing
+
+Got feedback or found a bug? Feel free to open an issue or send us a pull request!
+
+
 
 ## 🏢 Enterprise
 
-Unlock enterprise-grade performance with custom solutions, expanded limits, and expert support. Contact us to learn more.
+Unlock enterprise-grade performance with custom solutions, expanded limits, and expert support. [Contact us](https://www.parallaxsystems.io/join?s=gh) to learn more.
 
----
+
 
 ## 📝 License
 
