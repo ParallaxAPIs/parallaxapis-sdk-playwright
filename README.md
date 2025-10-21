@@ -63,12 +63,12 @@ async function main() {
 
     await page.goto('https://www.website.com/');
     
-    ...
+    /*
     
         You can use your browser solution however you want, ParallaxAPIs 
         will handle the rest for you. 
         
-    ...
+    */
     
     await browser.close();
 }
@@ -106,12 +106,12 @@ async function main() {
 
     await page.goto('https://www.website.com/');
     
-    ...
+    /*
     
         You can use your browser solution however you want, ParallaxAPIs 
         will handle the rest for you. 
         
-    ...
+    */
     
     await browser.close();
 }
@@ -180,12 +180,12 @@ async function main() {
 
     await page.goto('https://www.website.com/');
     
-    ...
+    /*
     
-        You can use your browser solution however you want, parallax 
+        You can use your browser solution however you want, ParallaxAPIs 
         will handle the rest for you. 
         
-    ...
+    */
     
     await browser.close();
 }
@@ -219,12 +219,12 @@ async function main() {
 
     await page.goto('https://www.website.com/');
     
-    ...
+    /*
     
-        You can use your browser solution however you want, parallax 
+        You can use your browser solution however you want, ParallaxAPIs 
         will handle the rest for you. 
         
-    ...
+    */
     
     await browser.close();
 }
