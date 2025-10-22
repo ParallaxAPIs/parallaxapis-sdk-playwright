@@ -12,9 +12,9 @@ ParallaxAPIs Playwright SDK provides **seamless browser automation without anti-
 - ✅ **PerimeterX** - Automatic cookie generation and injection (\_px3), challenge solving
 
 **Key Benefits:**
-
-- ⚡ **Fast Bypass** - 5-10 seconds response times with full browser context
-- 🔧 **Simple Integration** - Clean API with comprehensive documentation, no browser management required
+- ⚡ **Seamless Integration** - Effortlessly plug in handlers that work out of the box with your existing Playwright setup
+- 🌉 **Best of Both Worlds** - Bridge between browser automation and request-based anti-bot solutions
+- 🔧 **Simple API** - Clean interface with comprehensive documentation
 - 🌐 **Full Browser Context** - Real browser environment for JavaScript-heavy sites
 - ⚙️ **Flexible Configuration** - Custom browser options, contexts, and proxy settings
 - 🍪 **Automatic Cookie Handling** - Set it and forget it - we inject cookies seamlessly
