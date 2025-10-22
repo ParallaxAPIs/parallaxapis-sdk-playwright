@@ -1,23 +1,21 @@
 {
   "name": "parallaxapis-sdk-playwright",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "ParallaxAPIs SDK",
   "homepage": "https://www.parallaxsystems.io/join?s=npm",
-  "repository": "https://github.com/ParallaxAPIs/parallax-sdk-playwright",
+  "repository": "https://github.com/ParallaxAPIs/parallaxapis-sdk-playwright",
   "author": "ParallaxSystems <info@parallaxsystems.io>",
   "license": "MIT",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "./dist/index.ts",
+  "types": "./dist/index.ts",
   "files": [
     "src",
     "assets",
     "README.md",
     "LICENSE",
     "tsup.config.ts",
-    "tsconfig.json",
-    "logo.png",
-    "npminstallplaywright.gif"
+    "tsconfig.json"
   ],
   "scripts": {
     "build": "tsup"
