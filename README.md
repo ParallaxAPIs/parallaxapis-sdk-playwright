@@ -2,20 +2,20 @@
 
 **Playwright SDK for bypassing DataDome and PerimeterX anti-bot protection.**
 
-## 📖 About Parallax API
+## 📖 Overview
 
-ParallaxAPIs provides a **request-based solution** for bypassing DataDome and PerimeterX anti-bot systems. Instead of relying on slow, resource-heavy browser automation, our API generates valid cookies and tokens in **200-400ms** through direct HTTP requests.
+ParallaxAPIs Playwright SDK provides **seamless browser automation without anti-bot barriers**. While browser automation is required, we handle all the complexity of bypassing DataDome and PerimeterX protection systems automatically, so you can focus on your automation logic.
 
 **What We Solve:**
-- ✅ **DataDome** - Slider captchas, interstitial pages, cookie generation, tags payload
-- ✅ **PerimeterX** - Cookie generation (_px3), challenge solver, vid & cts tokens
+- ✅ **DataDome** - Slider captchas, interstitial pages, automatic cookie injection
+- ✅ **PerimeterX** - Automatic cookie generation and injection (_px3), challenge solving
 
 **Key Benefits:**
-- ⚡ **Lightning Fast** - 200-400ms response times vs 2-5+ seconds for browsers
-- 🔧 **Simple Integration** - Clean API, no browser management required
-- 🚀 **Highly Scalable** - Handle thousands of concurrent requests with minimal resources
-- 💰 **Cost Effective** - Lightweight infrastructure, minimal proxy usage
-- 🔄 **Always Updated** - We handle all reverse engineering and updates for you
+- **Zero Configuration** - Simple `.init()` method handles everything automatically
+- **Transparent Integration** - Works with your existing Playwright code
+- **Full Browser Context** - Real browser environment for JavaScript-heavy sites
+- **Automatic Cookie Handling** - Set it and forget it - we inject cookies seamlessly
+- **Always Updated** - We handle all reverse engineering and updates for you
 
 ---
 
