@@ -1,6 +1,6 @@
 {
   "name": "parallaxapis-sdk-playwright",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ParallaxAPIs SDK",
   "homepage": "https://www.parallaxsystems.io/join?s=npm",
   "repository": "https://github.com/ParallaxAPIs/parallax-sdk-playwright",
@@ -15,7 +15,9 @@
     "README.md",
     "LICENSE",
     "tsup.config.ts",
-    "tsconfig.json"
+    "tsconfig.json",
+    "logo.png",
+    "npminstallplaywright.gif"
   ],
   "scripts": {
     "build": "tsup"
