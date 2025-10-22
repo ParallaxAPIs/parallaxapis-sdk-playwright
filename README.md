@@ -43,9 +43,9 @@ npm install parallaxapis-sdk-playwright
 
 ## 🧑‍💻 PX Usage
 
-### ⚡ SDK Initialization, and usage
+### ⚡ SDK Initialization and usage
 
-Init methods in sdk will create a browser, and plug solvers for you. You can just create them with our SDK and you are ready to go!
+Initialization methods within the SDK will establish a browser environment and configure the necessary solvers. Once you've created these components with our SDK, you're fully prepared to proceed.
 
 ```javascript
 import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
@@ -77,9 +77,9 @@ main().catch(console.error);
 
 ```
 
-## Custom browser, or context options
+## Custom browser or context options
 
-You can also provide any browser, and context options which you need
+Additionally, you have the flexibility to provide your own browser configuration and context options as needed.
 
 ```javascript
 import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
@@ -191,7 +191,7 @@ async function main() {
 main().catch(console.error);
 
 ```
-You can also provide any browser, and context options which you need
+The system supports providing custom browser implementations and context options tailored to your requirements.
 
 ```javascript
 import DatadomeHandler from 'parallaxapis-sdk-playwright';
