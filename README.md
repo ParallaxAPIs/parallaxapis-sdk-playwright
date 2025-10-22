@@ -11,11 +11,11 @@ ParallaxAPIs Playwright SDK provides **seamless browser automation without anti-
 - ✅ **PerimeterX** - Automatic cookie generation and injection (_px3), challenge solving
 
 **Key Benefits:**
-- **Zero Configuration** - Simple `.init()` method handles everything automatically
-- **Transparent Integration** - Works with your existing Playwright code
-- **Full Browser Context** - Real browser environment for JavaScript-heavy sites
-- **Automatic Cookie Handling** - Set it and forget it - we inject cookies seamlessly
-- **Always Updated** - We handle all reverse engineering and updates for you
+- ⚡ **Zero Configuration** - Simple `.init()` method handles everything automatically
+- 🔧 **Transparent Integration** - Works with your existing Playwright code
+- 🌐 **Full Browser Context** - Real browser environment for JavaScript-heavy sites
+- 🍪 **Automatic Cookie Handling** - Set it and forget it - we inject cookies seamlessly
+- 🔄 **Always Updated** - We handle all reverse engineering and updates for you
 
 ---
 
