@@ -15,19 +15,21 @@ import type { Config } from "../../models/config";
 import { SDKHelper } from "../sdk-helper/helper";
 
 const DATADOME_COOKIE_LENGTH = 128;
+const defaultMaxRetry = 5;
 
 export type BrowserInitConfig = {
   browserLaunchOptions?: Omit<LaunchOptions, "proxy" | "headless" | "channel">;
   contextLaunchOptions?: Omit<BrowserContextOptions, "userAgent">;
 };
 
-export default class DatadomeHandler extends SDKHelper {
+export class DatadomeHandler extends SDKHelper {
   private sdk: DatadomeSDK;
   private cfg: Config;
   private blockedRequest: Request | undefined;
   private tagsProcessing: boolean = false;
   private mu: Mutex = new Mutex();
   private blockedResponseHandler?: (response: Response) => Promise<void>;
+  private retry: number = 0;
 
   private constructor(
     config: Config,
@@ -123,6 +125,7 @@ export default class DatadomeHandler extends SDKHelper {
         throw new Error(
           solveResult.message ? solveResult.message : solveResult.cookie,
         );
+
       if (!solveResult.message) throw new Error("api didn't return any cookie");
 
       const [cookieName, cookieValue] = solveResult.message.split("=");
@@ -130,14 +133,7 @@ export default class DatadomeHandler extends SDKHelper {
       if (!cookieName || !cookieValue)
         throw new Error("api returned malformed cookie");
 
-      await this.ctx.clearCookies({ name: "datadome" });
-      await this.ctx.addCookies([
-        {
-          name: cookieName,
-          value: cookieValue,
-          url: await this.getOrigin(),
-        },
-      ]);
+      await this.replaceCookie(cookieName, cookieValue, await this.getOrigin());
 
       this.log(`Successfully solved datadome! [${pd}]`);
     } catch (error) {
@@ -190,14 +186,15 @@ export default class DatadomeHandler extends SDKHelper {
           await blockHandlingPromise;
 
           if (this.blockedRequest != undefined) {
-            await this.page.evaluate(
+            const status = await this.page.evaluate(
               async ({ method, headers, postData, url }) => {
-                if (url)
+                if (url) {
                   return await fetch(url, {
                     method: method,
                     body: postData,
                     headers: headers,
                   }).then((res) => res.status);
+                }
               },
               {
                 method: this.blockedRequest.method(),
@@ -207,12 +204,25 @@ export default class DatadomeHandler extends SDKHelper {
               },
             );
 
+            if (!status || status < 200 || status >= 300) {
+              this.retry++;
+            } else {
+              this.retry = 0;
+            }
+
+            if (this.retry >= defaultMaxRetry) {
+              throw new Error(
+                `Exceed maximum solving retry: ${defaultMaxRetry}`,
+              );
+            }
+
             this.blockedRequest = undefined;
           }
 
           await this.page.reload();
         } catch (error) {
           this.log(`Error handling captcha request: ${error}`);
+          throw error;
         }
       },
     );

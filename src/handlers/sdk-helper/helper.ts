@@ -33,6 +33,21 @@ export class SDKHelper {
     return u.origin === "null" ? "" : u.origin;
   }
 
+  protected async replaceCookie(
+    cookieName: string,
+    value: string,
+    origin: string,
+  ) {
+    await this.ctx.clearCookies({ name: cookieName });
+    await this.ctx.addCookies([
+      {
+        name: cookieName,
+        value: value,
+        url: origin,
+      },
+    ]);
+  }
+
   protected withBaseCleanup(
     ...additionalCleanupFunctions: (() => Promise<void>)[]
   ) {

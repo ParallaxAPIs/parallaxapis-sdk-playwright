@@ -18,14 +18,14 @@ const captchaRequestRe = /https?.*(captcha\.js).*(u=)/i;
 
 const initGenerationIntervalTimeout = 1000 * 60 * 4;
 
-export default class PerimeterxHandler extends SDKHelper {
+export class PerimeterxHandler extends SDKHelper {
   private sdk: PerimeterxSDK;
   private cfg: Config;
   private pxData: GeneratePxCookiesResponse = {} as GeneratePxCookiesResponse;
   private fallbackOrigin: string;
   private captchaSolvingMu: Mutex = new Mutex();
   private initGenerationInterval?: NodeJS.Timeout;
-  private captchaResponseHandler?: (response: Response) => Promise<void>;
+  private handlers: ((response: Response) => Promise<void>)[] = [];
 
   private constructor(
     config: Config,
@@ -119,14 +119,11 @@ export default class PerimeterxHandler extends SDKHelper {
       if (!cookieName || !cookieValue)
         throw new Error("Api responded with malformed cookie");
 
-      await this.ctx.clearCookies({ name: cookieName });
-      await this.ctx.addCookies([
-        {
-          name: cookieName,
-          value: cookieValue,
-          url: await this.getOrigin(),
-        },
-      ]);
+      await this.replaceCookie(
+        cookieName,
+        "cookieValue",
+        await this.getOrigin(),
+      );
 
       this.log("Captcha solved!");
 
@@ -135,7 +132,6 @@ export default class PerimeterxHandler extends SDKHelper {
       this.log(`Error solving captcha: ${error}`);
       throw error;
     } finally {
-      await delay(1000);
       await this.page.reload();
       release();
     }
@@ -160,14 +156,7 @@ export default class PerimeterxHandler extends SDKHelper {
       let origin = await this.getOrigin();
       if (origin.length === 0) origin = this.fallbackOrigin;
 
-      await this.ctx.clearCookies({ name: cookieName });
-      await this.ctx.addCookies([
-        {
-          name: cookieName,
-          value: cookieValue,
-          url: origin,
-        },
-      ]);
+      await this.replaceCookie(cookieName, cookieValue, origin);
 
       this.log("Init solved...");
 
@@ -212,7 +201,7 @@ export default class PerimeterxHandler extends SDKHelper {
   }
 
   private async handleCaptchaBlockedRoutes() {
-    this.captchaResponseHandler = async (response: Response) => {
+    const handler = async (response: Response) => {
       try {
         if (!captchaRequestRe.test(response.url())) return;
 
@@ -222,7 +211,8 @@ export default class PerimeterxHandler extends SDKHelper {
       }
     };
 
-    this.ctx.on("response", this.captchaResponseHandler);
+    this.handlers.push(handler);
+    this.ctx.on("response", handler);
   }
 
   // Abort on collector scripts, we don't want them to succeed
@@ -242,8 +232,11 @@ export default class PerimeterxHandler extends SDKHelper {
       if (this.initGenerationInterval)
         clearInterval(this.initGenerationInterval);
 
-      if (this.captchaResponseHandler)
-        this.ctx.off("response", this.captchaResponseHandler);
+      if (this.handlers.length > 0) {
+        for (const handler of this.handlers) {
+          this.ctx.off("response", handler);
+        }
+      }
     });
   }
 }

@@ -12,6 +12,7 @@ ParallaxAPIs Playwright SDK provides **seamless browser automation without anti-
 - ✅ **PerimeterX** - Automatic cookie generation and injection (\_px3), challenge solving
 
 **Key Benefits:**
+
 - ⚡ **Seamless Integration** - Effortlessly plug in handlers that work out of the box with your existing Playwright setup
 - 🌉 **Best of Both Worlds** - Bridge between browser automation and request-based anti-bot solutions
 - 🔧 **Simple API** - Clean interface with comprehensive documentation
@@ -175,7 +176,7 @@ main().catch(console.error);
 ## 🧑‍💻 Datadome Usage
 
 ```javascript
-import DatadomeHandler from "parallaxapis-sdk-playwright";
+import { DatadomeHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
   const [page, browser] = await DatadomeHandler.init({
@@ -206,7 +207,7 @@ main().catch(console.error);
 The system supports providing custom browser implementations and context options tailored to your requirements.
 
 ```javascript
-import DatadomeHandler from "parallaxapis-sdk-playwright";
+import { DatadomeHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
   const [page, browser] = await DatadomeHandler.init(
@@ -248,7 +249,7 @@ main().catch(console.error);
 ## Datadome with SDK Configuration
 
 ```javascript
-import DatadomeHandler from 'parallaxapis-sdk-playwright';
+import { DatadomeHandler } from 'parallaxapis-sdk-playwright';
 import { Agent } from 'undici';
 
 async function main() {
