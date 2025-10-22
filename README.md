@@ -7,10 +7,12 @@
 ParallaxAPIs Playwright SDK provides **seamless browser automation without anti-bot barriers**. While browser automation is required, we handle all the complexity of bypassing DataDome and PerimeterX protection systems automatically, so you can focus on your automation logic.
 
 **What We Solve:**
+
 - ✅ **DataDome** - Slider captchas, interstitial pages, automatic cookie injection
-- ✅ **PerimeterX** - Automatic cookie generation and injection (_px3), challenge solving
+- ✅ **PerimeterX** - Automatic cookie generation and injection (\_px3), challenge solving
 
 **Key Benefits:**
+
 - ⚡ **Fast Bypass** - 5-10 seconds response times with full browser context
 - 🔧 **Simple Integration** - Clean API with comprehensive documentation, no browser management required
 - 🌐 **Full Browser Context** - Real browser environment for JavaScript-heavy sites
@@ -49,33 +51,33 @@ npm install parallaxapis-sdk-playwright
 Initialization methods within the SDK will establish a browser environment and configure the necessary solvers. Once you've created these components with our SDK, you're fully prepared to proceed.
 
 ```javascript
-import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
+import { PerimeterxHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
-    const [page, browser] = await PerimeterxHandler.init({
-        apiKey: "PX-KEY",
-        apiHost: "parallaxhost.com", //optional
-        proxy: `http://user:password@host:port`,
-        proxyRegion: "eu",
-        region: "com",
-        site: "website",
-        websiteUrl: "https://www.website.com/"
-    })
+  const [page, browser] = await PerimeterxHandler.init({
+    apiKey: "PX-KEY",
+    apiHost: "parallaxhost.com", //optional
+    proxy: `http://user:password@host:port`,
+    proxyRegion: "eu",
+    region: "com",
+    site: "website",
+    websiteUrl: "https://www.website.com/",
+    disableLogging: true, // Optional: disable SDK logging
+  });
 
-    await page.goto('https://www.website.com/');
-    
-    /*
-    
-        You can use your browser solution however you want, ParallaxAPIs 
-        will handle the rest for you. 
-        
+  await page.goto("https://www.website.com/");
+
+  /*
+
+        You can use your browser solution however you want, ParallaxAPIs
+        will handle the rest for you.
+
     */
-    
-    await browser.close();
+
+  await browser.close();
 }
 
 main().catch(console.error);
-
 ```
 
 ## Custom browser or context options
@@ -83,42 +85,44 @@ main().catch(console.error);
 Additionally, you have the flexibility to provide your own browser configuration and context options as needed.
 
 ```javascript
-import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
+import { PerimeterxHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
-    const [page, browser] = await PerimeterxHandler.init({
-        apiKey: "PX-KEY",
-        apiHost: "parallaxhost.com", //optional
-        proxy: `http://user:password@host:port`,
-        proxyRegion: "eu",
-        region: "com",
-        site: "website",
-        websiteUrl: "https://www.website.com/"
-    }, {
-        browserLaunchOptions: {
-            executablePath: "/home/user/chrome/executable"
-            // ...... More options  
-        },
-        contextLaunchOptions: {
-            isMobile: true
-            // ...... More options 
-        }
-    })
+  const [page, browser] = await PerimeterxHandler.init(
+    {
+      apiKey: "PX-KEY",
+      apiHost: "parallaxhost.com", //optional
+      proxy: `http://user:password@host:port`,
+      proxyRegion: "eu",
+      region: "com",
+      site: "website",
+      websiteUrl: "https://www.website.com/",
+    },
+    {
+      browserLaunchOptions: {
+        executablePath: "/home/user/chrome/executable",
+        // ...... More options
+      },
+      contextLaunchOptions: {
+        isMobile: true,
+        // ...... More options
+      },
+    },
+  );
 
-    await page.goto('https://www.website.com/');
-    
-    /*
-    
-        You can use your browser solution however you want, ParallaxAPIs 
-        will handle the rest for you. 
-        
+  await page.goto("https://www.website.com/");
+
+  /*
+
+        You can use your browser solution however you want, ParallaxAPIs
+        will handle the rest for you.
+
     */
-    
-    await browser.close();
+
+  await browser.close();
 }
 
 main().catch(console.error);
-
 ```
 
 ## ⚙️ SDK Configuration Options
@@ -158,6 +162,12 @@ main().catch(console.error);
 
 ### Configuration Options
 
+**Core Options:**
+
+- **disableLogging** (optional): Set to `true` to disable SDK logging output (default: `false`)
+
+**SDK Config Options:**
+
 - **timeout** (optional): Maximum time in milliseconds for the entire request to complete
 - **bodyTimeout** (optional): Maximum time in milliseconds to wait for the response body
 - **dispatcher** (optional): Custom undici `Dispatcher` instance for advanced HTTP client configurations (connection pooling, pipelining, etc.)
@@ -165,71 +175,74 @@ main().catch(console.error);
 ## 🧑‍💻 Datadome Usage
 
 ```javascript
-import DatadomeHandler from 'parallaxapis-sdk-playwright';
+import DatadomeHandler from "parallaxapis-sdk-playwright";
 
 async function main() {
-    const [page, browser] = await DatadomeHandler.init({
-        apiKey: "DD-KEY",
-        apiHost: "parallaxhost.com", //optional
-        proxy: `http://user:password@host:port`,
-        proxyRegion: "eu",
-        region: "com",
-        site: "website",
-    })
+  const [page, browser] = await DatadomeHandler.init({
+    apiKey: "DD-KEY",
+    apiHost: "parallaxhost.com", //optional
+    proxy: `http://user:password@host:port`,
+    proxyRegion: "eu",
+    region: "com",
+    site: "website",
+    disableLogging: true, // Optional: disable SDK logging
+  });
 
-    await page.goto('https://www.website.com/');
-    
-    /*
-    
-        You can use your browser solution however you want, ParallaxAPIs 
-        will handle the rest for you. 
-        
+  await page.goto("https://www.website.com/");
+
+  /*
+
+        You can use your browser solution however you want, ParallaxAPIs
+        will handle the rest for you.
+
     */
-    
-    await browser.close();
+
+  await browser.close();
 }
 
 main().catch(console.error);
-
 ```
+
 The system supports providing custom browser implementations and context options tailored to your requirements.
 
 ```javascript
-import DatadomeHandler from 'parallaxapis-sdk-playwright';
+import DatadomeHandler from "parallaxapis-sdk-playwright";
 
 async function main() {
-    const [page, browser] = await DatadomeHandler.init({
-        apiKey: "DD-KEY",
-        apiHost: "parallaxhost.com", //optional
-        proxy: `http://user:password@host:port`,
-        proxyRegion: "eu",
-        region: "com",
-        site: "website",
-    }, {
-        browserLaunchOptions: {
-            executablePath: "/home/user/chrome/executable"
-            // ...... More options  
-        },
-        contextLaunchOptions: {
-            isMobile: true
-            // ...... More options 
-        }
-    })
+  const [page, browser] = await DatadomeHandler.init(
+    {
+      apiKey: "DD-KEY",
+      apiHost: "parallaxhost.com", //optional
+      proxy: `http://user:password@host:port`,
+      proxyRegion: "eu",
+      region: "com",
+      site: "website",
+    },
+    {
+      browserLaunchOptions: {
+        executablePath: "/home/user/chrome/executable",
+        // ...... More options
+      },
+      contextLaunchOptions: {
+        isMobile: true,
+        // ...... More options
+      },
+    },
+  );
 
-    await page.goto('https://www.website.com/');
-    
-    /*
-    
-        You can use your browser solution however you want, ParallaxAPIs 
-        will handle the rest for you. 
-        
+  await page.goto("https://www.website.com/");
+
+  /*
+
+        You can use your browser solution however you want, ParallaxAPIs
+        will handle the rest for you.
+
     */
-    
-    await browser.close();
+
+  await browser.close();
 }
 
 main().catch(console.error);
-
 ```
 
 ## Datadome with SDK Configuration
@@ -280,19 +293,13 @@ main().catch(console.error);
 
 - Full API docs & support: [Discord](https://www.parallaxsystems.io/join?s=gh)
 
-
-
 ## 🌟 Contributing
 
 Got feedback or found a bug? Feel free to open an issue or send us a pull request!
 
-
-
 ## 🏢 Enterprise
 
 Unlock enterprise-grade performance with custom solutions, expanded limits, and expert support. [Contact us](https://www.parallaxsystems.io/join?s=gh) to learn more.
-
-
 
 ## 📝 License
 

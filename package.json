@@ -37,6 +37,8 @@
   "dependencies": {
     "async-mutex": "^0.5.0",
     "delay": "^6.0.0",
+    "parallaxapis-sdk-playwright": "^1.0.0",
+    "parallaxapis-sdk-ts": "^1.0.3",
     "playwright": "^1.56.0",
     "undici": "^7.16.0"
   },

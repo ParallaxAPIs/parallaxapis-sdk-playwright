@@ -1,6 +1,6 @@
 import { Mutex } from "async-mutex";
 import fs from "fs";
-import { DatadomeSDK } from "parallax-sdk-ts";
+import { DatadomeSDK } from "parallaxapis-sdk-ts";
 import {
   chromium,
   type Browser,
@@ -22,23 +22,29 @@ export type BrowserInitConfig = {
 };
 
 export default class DatadomeHandler extends SDKHelper {
-  private ctx: BrowserContext;
   private sdk: DatadomeSDK;
   private cfg: Config;
   private blockedRequest: Request | undefined;
   private tagsProcessing: boolean = false;
   private mu: Mutex = new Mutex();
+  private blockedResponseHandler?: (response: Response) => Promise<void>;
 
   private constructor(
     config: Config,
     ctx: BrowserContext,
     page: Page,
+    browser: Browser,
     sdk: DatadomeSDK,
   ) {
-    super("ParallaxAPIs Datadome Handler", page);
+    super(
+      "ParallaxAPIs Datadome Handler",
+      page,
+      browser,
+      ctx,
+      config.disableLogging || false,
+    );
 
     this.ctx = ctx;
-    this.page = page;
     this.cfg = config;
     this.sdk = sdk;
   }
@@ -48,38 +54,45 @@ export default class DatadomeHandler extends SDKHelper {
     config: Config,
     browserInitConfig?: BrowserInitConfig,
   ): Promise<[Page, Browser, BrowserContext, DatadomeHandler]> {
-    const proxyUrl = new URL(config.proxy);
+    try {
+      const proxyUrl = new URL(config.proxy);
 
-    const sdk = new DatadomeSDK({
-      apiKey: config.apiKey,
-      apiHost: config.apiHost,
-      ...config.sdkConfig,
-    });
+      const sdk = new DatadomeSDK({
+        apiKey: config.apiKey,
+        apiHost: config.apiHost,
+        ...config.sdkConfig,
+      });
 
-    const browser = await chromium.launch({
-      proxy: {
-        server: `${proxyUrl.hostname}:${proxyUrl.port}`,
-        password: proxyUrl.password,
-        username: proxyUrl.username,
-      },
-      headless: false,
-      channel: "chrome",
-      ...browserInitConfig?.browserLaunchOptions,
-    });
+      const browser = await chromium.launch({
+        proxy: {
+          server: `${proxyUrl.hostname}:${proxyUrl.port}`,
+          password: proxyUrl.password,
+          username: proxyUrl.username,
+        },
+        headless: false,
+        channel: "chrome",
+        ...browserInitConfig?.browserLaunchOptions,
+      });
 
-    const ua = await sdk.generateUserAgent({ region: "eu", site: config.site });
+      const ua = await sdk.generateUserAgent({
+        region: "eu",
+        site: config.site,
+      });
 
-    const context = await browser.newContext({
-      userAgent: ua.UserAgent,
-      ...browserInitConfig?.contextLaunchOptions,
-    });
+      const context = await browser.newContext({
+        userAgent: ua.UserAgent,
+        ...browserInitConfig?.contextLaunchOptions,
+      });
 
-    const page = await context.newPage();
-    const handler = new DatadomeHandler(config, context, page, sdk);
+      const page = await context.newPage();
+      const handler = new DatadomeHandler(config, context, page, browser, sdk);
 
-    await handler.proxyTraffic();
+      await handler.proxyTraffic();
 
-    return [page, browser, context, handler];
+      return [page, browser, context, handler];
+    } catch (error) {
+      throw new Error(`Failed to initialize DatadomeHandler: ${error}`);
+    }
   }
 
   // Handles datadome block, like captcha or intersitial.
@@ -117,8 +130,6 @@ export default class DatadomeHandler extends SDKHelper {
       if (!cookieName || !cookieValue)
         throw new Error("api returned malformed cookie");
 
-      this.log("Got blocked, solving datadome...");
-
       await this.ctx.clearCookies({ name: "datadome" });
       await this.ctx.addCookies([
         {
@@ -127,27 +138,39 @@ export default class DatadomeHandler extends SDKHelper {
           url: await this.getOrigin(),
         },
       ]);
+
+      this.log(`Successfully solved datadome! [${pd}]`);
     } catch (error) {
       this.log(`Error while handling block: ${error}`);
     }
   }
 
   public async proxyTraffic() {
-    this.replaceTagsCookie();
-    this.handleCaptchaRequest();
-    this.handleBlockedRoutes();
+    try {
+      this.handleCleanup();
+      this.replaceTagsCookie();
+      this.handleCaptchaRequest();
+      this.handleBlockedRoutes();
+    } catch (error) {
+      this.log(`Error setting up proxy traffic handlers: ${error}`);
+      throw error;
+    }
   }
 
   // Saves blocked requests, so we can retry them later
   private async handleBlockedRoutes() {
-    this.ctx.on("response", async (response: Response) => {
-      if (
-        response.status() == 403 &&
-        JSON.stringify(await response.json()).includes("captcha-delivery")
-      ) {
-        this.blockedRequest = response.request();
-      }
-    });
+    this.blockedResponseHandler = async (response: Response) => {
+      try {
+        if (
+          response.status() == 403 &&
+          JSON.stringify(await response.json()).includes("captcha-delivery")
+        ) {
+          this.blockedRequest = response.request();
+        }
+      } catch {}
+    };
+
+    this.ctx.on("response", this.blockedResponseHandler);
   }
 
   // Blocks a geo captcha page request, for better flow, solves a challange, and retries blocked request.
@@ -155,38 +178,42 @@ export default class DatadomeHandler extends SDKHelper {
     await this.page.route(
       /geo\.captcha\-delivery\.com\/(interstitial|captcha)/gm,
       async (route) => {
-        const request = route.request();
+        try {
+          const request = route.request();
 
-        const blockHandlingPromise = this.handleBlock(request.url());
+          const blockHandlingPromise = this.handleBlock(request.url());
 
-        await route.fulfill({
-          body: fs.readFileSync("./assets/solving.html", "utf-8"),
-        });
+          await route.fulfill({
+            body: fs.readFileSync("./assets/solving.html", "utf-8"),
+          });
 
-        await blockHandlingPromise;
+          await blockHandlingPromise;
 
-        if (this.blockedRequest != undefined) {
-          await this.page.evaluate(
-            async ({ method, headers, postData, url }) => {
-              if (url)
-                return await fetch(url, {
-                  method: method,
-                  body: postData,
-                  headers: headers,
-                }).then((res) => res.status);
-            },
-            {
-              method: this.blockedRequest.method(),
-              headers: this.blockedRequest.headers(),
-              postData: this.blockedRequest.postData(),
-              url: this.blockedRequest.url(),
-            },
-          );
+          if (this.blockedRequest != undefined) {
+            await this.page.evaluate(
+              async ({ method, headers, postData, url }) => {
+                if (url)
+                  return await fetch(url, {
+                    method: method,
+                    body: postData,
+                    headers: headers,
+                  }).then((res) => res.status);
+              },
+              {
+                method: this.blockedRequest.method(),
+                headers: this.blockedRequest.headers(),
+                postData: this.blockedRequest.postData(),
+                url: this.blockedRequest.url(),
+              },
+            );
 
-          this.blockedRequest = undefined;
+            this.blockedRequest = undefined;
+          }
+
+          await this.page.reload();
+        } catch (error) {
+          this.log(`Error handling captcha request: ${error}`);
         }
-
-        await this.page.reload();
       },
     );
   }
@@ -260,7 +287,7 @@ export default class DatadomeHandler extends SDKHelper {
           region: this.cfg.region,
           proxyregion: this.cfg.proxyRegion,
           proxy: this.cfg.proxy,
-          data: { cid: datadomeCookie || "null" },
+          data: { cid: datadomeCookie?.value || "null" },
         });
 
         const template = bodyJson.cookie.slice(
@@ -281,6 +308,13 @@ export default class DatadomeHandler extends SDKHelper {
       } catch {
         await route.continue();
       }
+    });
+  }
+
+  private handleCleanup() {
+    this.withBaseCleanup(async () => {
+      if (this.blockedResponseHandler)
+        this.ctx.off("response", this.blockedResponseHandler);
     });
   }
 }
