@@ -9,10 +9,13 @@ const replaceSolvingHtmlPaths = () => {
 
   for (const filePath of paths) {
     const fullFilePath = path.join(dist, filePath);
-    const assetFileRe = /(\/|.\/|)assets\/([^"'`]+)/gim;
+    const assetFileRe = /("|'|`)(\/|.\/|)assets\/([^"'`]+)./gim;
 
     const contents = fs.readFileSync(fullFilePath, "utf-8");
-    const fixedContents = contents.replaceAll(assetFileRe, "$2");
+    const fixedContents = contents.replaceAll(
+      assetFileRe,
+      `require("path").join(__dirname, "$3")`,
+    );
 
     fs.writeFileSync(fullFilePath, fixedContents, "utf-8");
   }
