@@ -1,6 +1,6 @@
 {
   "name": "parallaxapis-sdk-playwright",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "ParallaxAPIs SDK",
   "homepage": "https://www.parallaxsystems.io/join?s=npm",
   "repository": "https://github.com/ParallaxAPIs/parallaxapis-sdk-playwright",
