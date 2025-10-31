@@ -146,7 +146,9 @@ async function main() {
         sdkConfig: {
             timeout: 30000,        // Request timeout in milliseconds (optional)
             bodyTimeout: 10000,    // Body timeout in milliseconds (optional)
-            dispatcher: new ProxyAgent('http://custom-proxy:8080') // Custom proxy dispatcher (optional)
+            dispatcher: new ProxyAgent("http://proxy:port", {
+              requestTls: { rejectUnauthorized: false }
+            }) // Custom undici dispatcher (optional)
         }
     })
 
