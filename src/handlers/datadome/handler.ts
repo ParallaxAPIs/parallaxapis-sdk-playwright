@@ -1,6 +1,6 @@
 import { Mutex } from "async-mutex";
 import fs from "fs";
-import { DatadomeSDK } from "parallaxapis-sdk-ts";
+import { DatadomeSDK, ResponseGetUsage } from "parallaxapis-sdk-ts";
 import {
   chromium,
   type Browser,
@@ -326,5 +326,9 @@ export class DatadomeHandler extends SDKHelper {
       if (this.blockedResponseHandler)
         this.ctx.off("response", this.blockedResponseHandler);
     });
+  }
+
+  public async checkUsage(): Promise<ResponseGetUsage> {
+    return await this.sdk.checkUsage(this.cfg.site);
   }
 }

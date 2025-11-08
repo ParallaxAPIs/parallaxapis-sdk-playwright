@@ -1,4 +1,7 @@
-import type { GeneratePxCookiesResponse } from "parallaxapis-sdk-ts";
+import type {
+  GeneratePxCookiesResponse,
+  ResponseGetUsage,
+} from "parallaxapis-sdk-ts";
 import { PerimeterxSDK } from "parallaxapis-sdk-ts";
 import {
   chromium,
@@ -68,7 +71,6 @@ export class PerimeterxHandler extends SDKHelper {
           password: proxyUrl.password,
           username: proxyUrl.username,
         },
-        headless: false,
         channel: "chrome",
         ...browserInitConfig?.browserLaunchOptions,
       });
@@ -238,5 +240,9 @@ export class PerimeterxHandler extends SDKHelper {
         }
       }
     });
+  }
+
+  public async checkUsage(): Promise<ResponseGetUsage> {
+    return await this.sdk.checkUsage(this.cfg.site);
   }
 }
