@@ -23,9 +23,20 @@
   },
   "keywords": [
     "perimeterx",
-    "web scraping",
     "datadome",
-    "crawlers"
+    "web scraping",
+    "crawlers",
+    "playwright",
+    "bypass",
+    "anti-bot",
+    "bot detection",
+    "captcha solver",
+    "browser automation",
+    "fingerprinting",
+    "headless browser",
+    "challenge solver",
+    "sdk",
+    "automated browser"
   ],
   "devDependencies": {
     "@types/bun": "latest",
