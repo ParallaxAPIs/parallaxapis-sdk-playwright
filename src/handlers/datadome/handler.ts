@@ -13,6 +13,7 @@ import {
 } from "playwright";
 import type { Config } from "../../models/config";
 import { SDKHelper } from "../sdk-helper/helper";
+import { HandlerInitValues } from "../../models/init";
 
 const DATADOME_COOKIE_LENGTH = 128;
 const defaultMaxRetry = 5;
@@ -51,11 +52,12 @@ export class DatadomeHandler extends SDKHelper {
     this.sdk = sdk;
   }
 
+
   // Init function, it handles everything for a user, you can customize a browser launch options, and browser context launch options
   public static async init(
     config: Config,
     browserInitConfig?: BrowserInitConfig,
-  ): Promise<[Page, Browser, BrowserContext, DatadomeHandler]> {
+  ): Promise<HandlerInitValues<DatadomeSDK, DatadomeHandler>> {
     try {
       const proxyUrl = new URL(config.proxy);
 
@@ -91,7 +93,13 @@ export class DatadomeHandler extends SDKHelper {
 
       await handler.proxyTraffic();
 
-      return [page, browser, context, handler];
+      return {
+        browser,
+        handler,
+        page,
+        sdk,
+        browserContext: context
+      };
     } catch (error) {
       throw new Error(`Failed to initialize DatadomeHandler: ${error}`);
     }
@@ -163,7 +171,7 @@ export class DatadomeHandler extends SDKHelper {
         ) {
           this.blockedRequest = response.request();
         }
-      } catch {}
+      } catch { }
     };
 
     this.ctx.on("response", this.blockedResponseHandler);

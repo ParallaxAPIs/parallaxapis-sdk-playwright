@@ -55,7 +55,7 @@ Initialization methods within the SDK will establish a browser environment and c
 import { PerimeterxHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
-  const [page, browser] = await PerimeterxHandler.init({
+  const { page, browser, handler, sdk, browserContext } = await PerimeterxHandler.init({
     apiKey: "PX-KEY",
     apiHost: "parallaxhost.com", //optional
     proxy: `http://user:password@host:port`,
@@ -81,6 +81,40 @@ async function main() {
 main().catch(console.error);
 ```
 
+## Checking Usage
+
+You can check your API usage using either the `handler` or `sdk` instance:
+
+```javascript
+import { PerimeterxHandler } from "parallaxapis-sdk-playwright";
+
+async function main() {
+  const { page, browser, handler, sdk } = await PerimeterxHandler.init({
+    apiKey: "PX-KEY",
+    apiHost: "parallaxhost.com", //optional
+    proxy: `http://user:password@host:port`,
+    proxyRegion: "eu",
+    region: "com",
+    site: "website",
+    websiteUrl: "https://www.website.com/",
+  });
+
+  // Check usage via handler
+  const usage = await handler.checkUsage();
+  console.log("Current usage:", usage);
+
+  // Or check usage via SDK directly
+  const usageViaSdk = await sdk.checkUsage("website");
+  console.log("Current usage:", usageViaSdk);
+
+  await page.goto("https://www.website.com/");
+
+  await browser.close();
+}
+
+main().catch(console.error);
+```
+
 ## Custom browser or context options
 
 Additionally, you have the flexibility to provide your own browser configuration and context options as needed.
@@ -89,7 +123,7 @@ Additionally, you have the flexibility to provide your own browser configuration
 import { PerimeterxHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
-  const [page, browser] = await PerimeterxHandler.init(
+  const { page, browser, handler, sdk, browserContext } = await PerimeterxHandler.init(
     {
       apiKey: "PX-KEY",
       apiHost: "parallaxhost.com", //optional
@@ -135,7 +169,7 @@ import { PerimeterxHandler } from 'parallaxapis-sdk-playwright';
 import { ProxyAgent } from 'undici';
 
 async function main() {
-    const [page, browser] = await PerimeterxHandler.init({
+    const { page, browser, handler, sdk, browserContext } = await PerimeterxHandler.init({
         apiKey: "PX-KEY",
         apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,
@@ -181,7 +215,7 @@ main().catch(console.error);
 import { DatadomeHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
-  const [page, browser] = await DatadomeHandler.init({
+  const { page, browser, handler, sdk, browserContext } = await DatadomeHandler.init({
     apiKey: "DD-KEY",
     apiHost: "parallaxhost.com", //optional
     proxy: `http://user:password@host:port`,
@@ -206,13 +240,46 @@ async function main() {
 main().catch(console.error);
 ```
 
+## Checking Usage
+
+You can check your API usage using either the `handler` or `sdk` instance:
+
+```javascript
+import { DatadomeHandler } from "parallaxapis-sdk-playwright";
+
+async function main() {
+  const { page, browser, handler, sdk } = await DatadomeHandler.init({
+    apiKey: "DD-KEY",
+    apiHost: "parallaxhost.com", //optional
+    proxy: `http://user:password@host:port`,
+    proxyRegion: "eu",
+    region: "com",
+    site: "website",
+  });
+
+  // Check usage via handler
+  const usage = await handler.checkUsage();
+  console.log("Current usage:", usage);
+
+  // Or check usage via SDK directly
+  const usageViaSdk = await sdk.checkUsage("website");
+  console.log("Current usage:", usageViaSdk);
+
+  await page.goto("https://www.website.com/");
+
+  await browser.close();
+}
+
+main().catch(console.error);
+```
+
 The system supports providing custom browser implementations and context options tailored to your requirements.
 
 ```javascript
 import { DatadomeHandler } from "parallaxapis-sdk-playwright";
 
 async function main() {
-  const [page, browser] = await DatadomeHandler.init(
+  const { page, browser, handler, sdk, browserContext } = await DatadomeHandler.init(
     {
       apiKey: "DD-KEY",
       apiHost: "parallaxhost.com", //optional
@@ -255,7 +322,7 @@ import { DatadomeHandler } from 'parallaxapis-sdk-playwright';
 import { Agent } from 'undici';
 
 async function main() {
-    const [page, browser] = await DatadomeHandler.init({
+    const { page, browser, handler, sdk, browserContext } = await DatadomeHandler.init({
         apiKey: "DD-KEY",
         apiHost: "parallaxhost.com", //optional
         proxy: `http://user:password@host:port`,

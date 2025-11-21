@@ -15,6 +15,7 @@ import type { BrowserInitConfig } from "../datadome/handler";
 import { SDKHelper } from "../sdk-helper/helper";
 import { Mutex } from "async-mutex";
 import delay from "delay";
+import { HandlerInitValues } from "../../models/init";
 
 const collectorScriptUrlRe = /(?:http|https):\/\/(?=.*px)(?=.*collector).*/i;
 const captchaRequestRe = /https?.*(captcha\.js).*(u=)/i;
@@ -55,7 +56,7 @@ export class PerimeterxHandler extends SDKHelper {
   public static async init(
     config: Config & { websiteUrl: string },
     browserInitConfig?: BrowserInitConfig,
-  ): Promise<[Page, Browser, BrowserContext, PerimeterxHandler]> {
+  ): Promise<HandlerInitValues<PerimeterxSDK, PerimeterxHandler>> {
     try {
       const proxyUrl = new URL(config.proxy);
 
@@ -92,7 +93,13 @@ export class PerimeterxHandler extends SDKHelper {
 
       await handler.proxyTraffic();
 
-      return [page, browser, context, handler];
+      return {
+        browser,
+        handler,
+        page,
+        sdk,
+        browserContext: context
+      };
     } catch (error) {
       throw new Error(`Failed to initialize PerimeterxHandler: ${error}`);
     }
