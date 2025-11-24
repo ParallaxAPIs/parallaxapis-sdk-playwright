@@ -9,6 +9,8 @@ export type Config = {
   region: string;
   site: string;
 
+  maxApiRetry?: number
+
   sdkConfig?: {
     timeout?: number;
     bodyTimeout?: number;

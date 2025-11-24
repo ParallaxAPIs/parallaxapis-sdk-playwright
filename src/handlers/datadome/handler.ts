@@ -12,14 +12,16 @@ import {
   type Response,
 } from "playwright";
 import type { Config } from "../../models/config";
-import { SDKHelper } from "../sdk-helper/helper";
 import { HandlerInitValues } from "../../models/init";
+import { SDKHelper } from "../sdk-helper/helper";
 
 const DATADOME_COOKIE_LENGTH = 128;
+
+const defaultMaxApiRetry = 5;
 const defaultMaxRetry = 5;
 
 export type BrowserInitConfig = {
-  browserLaunchOptions?: Omit<LaunchOptions, "proxy" | "headless" | "channel">;
+  browserLaunchOptions?: Omit<LaunchOptions, "proxy" | "channel">;
   contextLaunchOptions?: Omit<BrowserContextOptions, "userAgent">;
 };
 
@@ -30,6 +32,7 @@ export class DatadomeHandler extends SDKHelper {
   private tagsProcessing: boolean = false;
   private mu: Mutex = new Mutex();
   private blockedResponseHandler?: (response: Response) => Promise<void>;
+  private maxApiRetry: number = defaultMaxApiRetry;
   private retry: number = 0;
 
   private constructor(
@@ -50,6 +53,8 @@ export class DatadomeHandler extends SDKHelper {
     this.ctx = ctx;
     this.cfg = config;
     this.sdk = sdk;
+
+    if (config.maxApiRetry) this.maxApiRetry = config.maxApiRetry
   }
 
 
@@ -108,44 +113,48 @@ export class DatadomeHandler extends SDKHelper {
   // Handles datadome block, like captcha or intersitial.
   // after solving, sdk retries blocked request and refreshes a page.
   private async handleBlock(url: string) {
-    try {
-      this.log("Got blocked, solving datadome...");
+    for (let retry = 0; retry < this.maxApiRetry; retry++) {
+      try {
+        this.log("Got blocked, solving datadome...");
 
-      const cookies = await this.ctx.cookies();
-      const datadomeCookie = cookies.find(
-        (cookie) => cookie.name == "datadome",
-      );
-
-      if (!datadomeCookie) throw Error("couldn't find initial datadome cookie");
-
-      const [task, pd] = this.sdk.parseChallengeUrl(url, datadomeCookie.value);
-
-      const solveResult = await this.sdk.generateCookie({
-        data: task,
-        pd: pd,
-        proxy: this.cfg.proxy,
-        proxyregion: this.cfg.proxyRegion,
-        region: this.cfg.region,
-        site: this.cfg.site,
-      });
-
-      if (solveResult.error)
-        throw new Error(
-          solveResult.message ? solveResult.message : solveResult.cookie,
+        const cookies = await this.ctx.cookies();
+        const datadomeCookie = cookies.find(
+          (cookie) => cookie.name == "datadome",
         );
 
-      if (!solveResult.message) throw new Error("api didn't return any cookie");
+        if (!datadomeCookie) throw Error("couldn't find initial datadome cookie");
 
-      const [cookieName, cookieValue] = solveResult.message.split("=");
+        const [task, pd] = this.sdk.parseChallengeUrl(url, datadomeCookie.value);
 
-      if (!cookieName || !cookieValue)
-        throw new Error("api returned malformed cookie");
+        const solveResult = await this.sdk.generateCookie({
+          data: task,
+          pd: pd,
+          proxy: this.cfg.proxy,
+          proxyregion: this.cfg.proxyRegion,
+          region: this.cfg.region,
+          site: this.cfg.site,
+        });
 
-      await this.replaceCookie(cookieName, cookieValue, await this.getOrigin());
+        if (solveResult.error)
+          throw new Error(
+            solveResult.message ? solveResult.message : solveResult.cookie,
+          );
 
-      this.log(`Successfully solved datadome! [${pd}]`);
-    } catch (error) {
-      this.log(`Error while handling block: ${error}`);
+        if (!solveResult.message) throw new Error("api didn't return any cookie");
+
+        const [cookieName, cookieValue] = solveResult.message.split("=");
+
+        if (!cookieName || !cookieValue)
+          throw new Error("api returned malformed cookie");
+
+        await this.replaceCookie(cookieName, cookieValue, await this.getOrigin());
+
+        this.log(`Successfully solved datadome! [${pd}]`);
+
+        return;
+      } catch (error) {
+        this.log(`Error while handling block: ${error}`);
+      }
     }
   }
 
