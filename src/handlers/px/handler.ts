@@ -1,3 +1,4 @@
+import { Mutex } from "async-mutex";
 import type {
   GeneratePxCookiesResponse,
   ResponseGetUsage,
@@ -11,11 +12,11 @@ import {
   type Response,
 } from "playwright";
 import type { Config } from "../../models/config";
+import { HandlerInitValues } from "../../models/init";
 import type { BrowserInitConfig } from "../datadome/handler";
 import { SDKHelper } from "../sdk-helper/helper";
-import { Mutex } from "async-mutex";
-import delay from "delay";
-import { HandlerInitValues } from "../../models/init";
+
+const defaultMaxApiRetry = 5;
 
 const collectorScriptUrlRe = /(?:http|https):\/\/(?=.*px)(?=.*collector).*/i;
 const captchaRequestRe = /https?.*(captcha\.js).*(u=)/i;
@@ -30,6 +31,7 @@ export class PerimeterxHandler extends SDKHelper {
   private captchaSolvingMu: Mutex = new Mutex();
   private initGenerationInterval?: NodeJS.Timeout;
   private handlers: ((response: Response) => Promise<void>)[] = [];
+  private maxApiRetry: number = defaultMaxApiRetry;
 
   private constructor(
     config: Config,
@@ -51,6 +53,8 @@ export class PerimeterxHandler extends SDKHelper {
     this.cfg = config;
     this.sdk = sdk;
     this.fallbackOrigin = fallbackOrigin;
+
+    if (config.maxApiRetry) this.maxApiRetry = config.maxApiRetry;
   }
 
   public static async init(
@@ -111,32 +115,36 @@ export class PerimeterxHandler extends SDKHelper {
     const release = await this.captchaSolvingMu.acquire();
 
     try {
-      this.log("Solving captcha...");
+      for (let retry = 0; retry < this.maxApiRetry; retry++) {
 
-      const result = await this.sdk.generateHoldCaptcha({
-        proxy: this.cfg.proxy,
-        proxyregion: this.cfg.proxyRegion,
-        region: this.cfg.region,
-        site: this.cfg.site,
-        data: this.pxData.data,
-      });
 
-      this.log("Got captcha response from api!");
+        this.log("Solving captcha...");
 
-      const [cookieName, cookieValue] = result.cookie.split("=");
+        const result = await this.sdk.generateHoldCaptcha({
+          proxy: this.cfg.proxy,
+          proxyregion: this.cfg.proxyRegion,
+          region: this.cfg.region,
+          site: this.cfg.site,
+          data: this.pxData.data,
+        });
 
-      if (!cookieName || !cookieValue)
-        throw new Error("Api responded with malformed cookie");
+        this.log("Got captcha response from api!");
 
-      await this.replaceCookie(
-        cookieName,
-        "cookieValue",
-        await this.getOrigin(),
-      );
+        const [cookieName, cookieValue] = result.cookie.split("=");
 
-      this.log("Captcha solved!");
+        if (!cookieName || !cookieValue)
+          throw new Error("Api responded with malformed cookie");
 
-      return result;
+        await this.replaceCookie(
+          cookieName,
+          "cookieValue",
+          await this.getOrigin(),
+        );
+
+        this.log("Captcha solved!");
+
+        return result;
+      }
     } catch (error) {
       this.log(`Error solving captcha: ${error}`);
       throw error;
@@ -148,28 +156,30 @@ export class PerimeterxHandler extends SDKHelper {
 
   private async solveInit() {
     try {
-      this.log("Solving init...");
+      for (let retry = 0; retry < this.maxApiRetry; retry++) {
+        this.log("Solving init...");
 
-      const result = await this.sdk.generateCookies({
-        proxy: this.cfg.proxy,
-        proxyregion: this.cfg.proxyRegion,
-        region: this.cfg.region,
-        site: this.cfg.site,
-      });
+        const result = await this.sdk.generateCookies({
+          proxy: this.cfg.proxy,
+          proxyregion: this.cfg.proxyRegion,
+          region: this.cfg.region,
+          site: this.cfg.site,
+        });
 
-      const [cookieName, cookieValue] = result.cookie.split("=");
+        const [cookieName, cookieValue] = result.cookie.split("=");
 
-      if (!cookieName || !cookieValue)
-        throw new Error("Api responded with malformed cookie");
+        if (!cookieName || !cookieValue)
+          throw new Error("Api responded with malformed cookie");
 
-      let origin = await this.getOrigin();
-      if (origin.length === 0) origin = this.fallbackOrigin;
+        let origin = await this.getOrigin();
+        if (origin.length === 0) origin = this.fallbackOrigin;
 
-      await this.replaceCookie(cookieName, cookieValue, origin);
+        await this.replaceCookie(cookieName, cookieValue, origin);
 
-      this.log("Init solved...");
+        this.log("Init solved...");
 
-      return result;
+        return result;
+      }
     } catch (error) {
       this.log(`Error solving init: ${error}`);
       throw error;
@@ -178,12 +188,24 @@ export class PerimeterxHandler extends SDKHelper {
 
   private async startInitGenerationInterval() {
     try {
-      this.pxData = await this.solveInit();
+      const initResult = await this.solveInit()
+
+      if (!initResult) {
+        throw new Error("Api returned empty init result")
+      }
+
+      this.pxData = initResult;
 
       this.page.once("load", async () => {
         this.initGenerationInterval = setInterval(async () => {
           try {
-            this.pxData = await this.solveInit();
+            const initResult = await this.solveInit()
+
+            if (!initResult) {
+              throw new Error("Api returned empty init result")
+            }
+
+            this.pxData = initResult
           } catch (error) {
             this.log(`Error while generating inti cookie: ${error}`);
           }

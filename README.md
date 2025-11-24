@@ -64,6 +64,7 @@ async function main() {
     site: "website",
     websiteUrl: "https://www.website.com/",
     disableLogging: true, // Optional: disable SDK logging
+    maxApiRetry: 5, // Optional: max retry attempts for API requests (default: 5)
   });
 
   await page.goto("https://www.website.com/");
@@ -202,6 +203,7 @@ main().catch(console.error);
 **Core Options:**
 
 - **disableLogging** (optional): Set to `true` to disable SDK logging output (default: `false`)
+- **maxApiRetry** (optional): Maximum number of retry attempts for API requests when solving captchas or generating cookies (default: `5`)
 
 **SDK Config Options:**
 
