@@ -189,10 +189,12 @@ export class DatadomeHandler extends SDKHelper {
   // Blocks a geo captcha page request, for better flow, solves a challange, and retries blocked request.
   private async handleCaptchaRequest() {
     await this.page.route(
-      /geo\.captcha\-delivery\.com\/(interstitial|captcha)/gm,
+      (url) => url.hostname === 'geo.captcha-delivery.com' &&
+        (url.pathname.includes('/interstitial') || url.pathname.includes('/captcha')),
       async (route) => {
         try {
           const request = route.request();
+          //this.log(`Intercepted captcha request: ${request.url()}`);
 
           const blockHandlingPromise = this.handleBlock(request.url());
 
