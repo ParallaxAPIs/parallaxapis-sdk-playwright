@@ -6,9 +6,8 @@
       "dependencies": {
         "async-mutex": "^0.5.0",
         "delay": "^6.0.0",
-        "parallaxapis-sdk-playwright": "^1.0.0",
-        "parallaxapis-sdk-ts": "^1.0.3",
-        "playwright": "^1.56.0",
+        "parallaxapis-sdk-ts": "^1.1.0",
+        "playwright": "1.54.1",
         "undici": "^7.16.0",
       },
       "devDependencies": {
@@ -312,9 +311,7 @@
 
     "package-json-from-dist": ["package-json-from-dist@1.0.1", "", {}, "sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw=="],
 
-    "parallaxapis-sdk-playwright": ["parallaxapis-sdk-playwright@1.0.0", "", { "dependencies": { "delay": "^6.0.0", "playwright": "^1.56.0" }, "peerDependencies": { "typescript": "^5.0.0" } }, "sha512-qbEJ/HgfVR0LTUlhTY/rxj7EwDZRa0NHeBimwpCg40KWXD21aCIIHCEkHmJRjrujKwRarwjrh4uE+8RyxhqKzg=="],
-
-    "parallaxapis-sdk-ts": ["parallaxapis-sdk-ts@1.0.3", "", { "dependencies": { "@types/got": "^9.6.12", "got": "^14.4.7", "undici": "^7.16.0" }, "peerDependencies": { "typescript": "^5.0.0" } }, "sha512-U9LeKODvUKuz0V2BZn0rQRK/0Eteneea1X/vG0Y6C3EftA4gzzGXfNTbsLWrtaClvRgwkSa32HmTBLJN0lyXUg=="],
+    "parallaxapis-sdk-ts": ["parallaxapis-sdk-ts@1.1.1", "", { "dependencies": { "@types/got": "^9.6.12", "got": "^14.4.7", "undici": "^7.16.0" }, "peerDependencies": { "typescript": "^5.0.0" } }, "sha512-ITphs01QbQm86Id4MBcGKZ9R07gCIvgeb8eGv6J4g9IfjM16f9mSP1Q17WNau74oBl+sK1OJ6izvySPKXYZHgQ=="],
 
     "path-key": ["path-key@3.1.1", "", {}, "sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q=="],
 
@@ -330,9 +327,9 @@
 
     "pkg-types": ["pkg-types@1.3.1", "", { "dependencies": { "confbox": "^0.1.8", "mlly": "^1.7.4", "pathe": "^2.0.1" } }, "sha512-/Jm5M4RvtBFVkKWRu2BLUTNP8/M2a+UwuAX+ae4770q1qVGtfjG+WTCupoZixokjmHiry8uI+dlY8KXYV5HVVQ=="],
 
-    "playwright": ["playwright@1.56.0", "", { "dependencies": { "playwright-core": "1.56.0" }, "optionalDependencies": { "fsevents": "2.3.2" }, "bin": { "playwright": "cli.js" } }, "sha512-X5Q1b8lOdWIE4KAoHpW3SE8HvUB+ZZsUoN64ZhjnN8dOb1UpujxBtENGiZFE+9F/yhzJwYa+ca3u43FeLbboHA=="],
+    "playwright": ["playwright@1.54.1", "", { "dependencies": { "playwright-core": "1.54.1" }, "optionalDependencies": { "fsevents": "2.3.2" }, "bin": { "playwright": "cli.js" } }, "sha512-peWpSwIBmSLi6aW2auvrUtf2DqY16YYcCMO8rTVx486jKmDTJg7UAhyrraP98GB8BoPURZP8+nxO7TSd4cPr5g=="],
 
-    "playwright-core": ["playwright-core@1.56.0", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-1SXl7pMfemAMSDn5rkPeZljxOCYAmQnYLBTExuh6E8USHXGSX3dx6lYZN/xPpTz1vimXmPA9CDnILvmJaB8aSQ=="],
+    "playwright-core": ["playwright-core@1.54.1", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-Nbjs2zjj0htNhzgiy5wu+3w09YetDx5pkrpI/kZotDlDUaYk0HVA5xrBVPdow4SAUIlhgKcJeJg4GRKW6xHusA=="],
 
     "postcss-load-config": ["postcss-load-config@6.0.1", "", { "dependencies": { "lilconfig": "^3.1.1" }, "peerDependencies": { "jiti": ">=1.21.0", "postcss": ">=8.0.9", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["jiti", "postcss", "tsx", "yaml"] }, "sha512-oPtTM4oerL+UXmx+93ytZVN82RrlY/wPUV8IeDxFrzIjXOLF1pN+EmKPLbubvKHT2HC20xXsCAH2Z+CKV6Oz/g=="],
 

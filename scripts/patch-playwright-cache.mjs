@@ -11,6 +11,8 @@ const candidates = [
   path.resolve(process.cwd(), "node_modules", "playwright-core", "lib", "server", "chromium", "crNetworkManager.js")
 ]
 
+console.log(candidates)
+
 let target = null
 
 for (const p of candidates) {
