@@ -137,6 +137,8 @@ async function main() {
     {
       browserLaunchOptions: {
         executablePath: "/home/user/chrome/executable",
+        headless: true,
+        args: ["--lang=en-US"]
         // ...... More options
       },
       contextLaunchOptions: {
@@ -293,6 +295,8 @@ async function main() {
     {
       browserLaunchOptions: {
         executablePath: "/home/user/chrome/executable",
+        headless: true,
+        args: ["--lang=en-US"]
         // ...... More options
       },
       contextLaunchOptions: {
