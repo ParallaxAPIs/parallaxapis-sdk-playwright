@@ -19,7 +19,8 @@
     "tsconfig.json"
   ],
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "postinstall": "node scripts/patch-playwright-cache.js"
   },
   "keywords": [
     "perimeterx",
