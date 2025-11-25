@@ -227,6 +227,7 @@ async function main() {
     region: "com",
     site: "website",
     disableLogging: true, // Optional: disable SDK logging
+    disableTagsGeneration: false,
   });
 
   await page.goto("https://www.website.com/");
