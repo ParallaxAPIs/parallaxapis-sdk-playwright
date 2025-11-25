@@ -18,4 +18,5 @@ export type Config = {
   };
 
   disableLogging?: boolean;
+  disableTagsGeneration?: boolean;
 };

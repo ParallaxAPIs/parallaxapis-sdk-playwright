@@ -35,6 +35,7 @@ export class DatadomeHandler extends SDKHelper {
   private mu: Mutex = new Mutex();
   private blockedResponseHandler?: (response: Response) => Promise<void>;
   private maxApiRetry: number = defaultMaxApiRetry;
+  private disableTagsGeneration: boolean = false;
 
   private constructor(
     config: Config,
@@ -56,6 +57,7 @@ export class DatadomeHandler extends SDKHelper {
     this.sdk = sdk;
 
     if (config.maxApiRetry) this.maxApiRetry = config.maxApiRetry
+    if (config.disableTagsGeneration) this.disableTagsGeneration = config.disableTagsGeneration;
   }
 
 
@@ -267,7 +269,6 @@ export class DatadomeHandler extends SDKHelper {
       try {
         const request = route.request();
         const postData = request.postData();
-
         const release = await this.mu.acquire();
 
         try {
@@ -275,9 +276,14 @@ export class DatadomeHandler extends SDKHelper {
             this.tagsProcessing ||
             !postData ||
             request.method() !== "POST" ||
-            !postData.includes("ddk")
+            !postData
           ) {
             return await route.continue();
+          }
+
+          // If tags generation is disabled, abort the request immediately
+          if (this.disableTagsGeneration || postData.includes(`jsType=le`)) {
+            return await route.abort();
           }
         } finally {
           release();
@@ -285,41 +291,6 @@ export class DatadomeHandler extends SDKHelper {
 
         try {
           this.tagsProcessing = true;
-
-          const response = await this.page.evaluate(
-            async ({ url, options }) => {
-              try {
-                const response = await fetch(url, {
-                  method: options.method,
-                  headers: options.headers,
-                  body: options.body,
-                });
-
-                const body = await response.json();
-
-                return {
-                  success: true,
-                  status: response.status,
-                  headers: Object.fromEntries(response.headers.entries()),
-                  body: body,
-                };
-              } catch {
-                return { success: false };
-              }
-            },
-            {
-              url: request.url(),
-              options: {
-                method: request.method(),
-                headers: request.headers(),
-                body: request.postData(),
-              },
-            },
-          );
-
-          if (!response.success) return route.abort();
-
-          const bodyJson = response.body as { cookie: string };
 
           const cookies = await this.ctx.cookies();
           const datadomeCookie = cookies.find(
@@ -334,22 +305,29 @@ export class DatadomeHandler extends SDKHelper {
             data: { cid: datadomeCookie?.value || "null" },
           });
 
-          const template = bodyJson.cookie.slice(
-            "datadome=".length + DATADOME_COOKIE_LENGTH,
-          );
+          if (!solveResult.message) {
+            throw new Error("SDK didn't return a cookie value");
+          }
 
-          const bodyCookie = `${solveResult.message}${template}`;
+          // Get the domain from the current page URL
+          const pageUrl = new URL(this.page.url());
+          const domain = pageUrl.hostname;
 
           this.log("Solved tags payload.");
 
-          await route.fulfill({
-            status: response.status,
-            headers: response.headers,
-            body: JSON.stringify({
-              status: response.status,
-              cookie: bodyCookie,
-            }),
-          });
+          await route.abort(); // Always abort the original request
+
+          // Set the cookie directly via context
+          await this.ctx.addCookies([{
+            name: 'datadome',
+            value: solveResult.message.split('=')[1],
+            domain: domain,
+            path: '/',
+            secure: true,
+            httpOnly: true,
+            sameSite: 'Lax'
+          }]);
+
         } finally {
           this.tagsProcessing = false;
         }
