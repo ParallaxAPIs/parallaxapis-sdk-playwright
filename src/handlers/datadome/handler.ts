@@ -276,7 +276,7 @@ export class DatadomeHandler extends SDKHelper {
             this.tagsProcessing ||
             !postData ||
             request.method() !== "POST" ||
-            !postData
+            !postData.includes("ddk")
           ) {
             return await route.continue();
           }
