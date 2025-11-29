@@ -33,6 +33,11 @@ export class SDKHelper {
     return u.origin === "null" ? "" : u.origin;
   }
 
+  protected async getHostname(): Promise<string> {
+    const u = new URL(this.page.url());
+    return u.hostname;
+  }
+
   protected async replaceCookie(
     cookieName: string,
     value: string,

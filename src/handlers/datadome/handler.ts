@@ -18,7 +18,6 @@ import { SDKHelper } from "../sdk-helper/helper";
 const DATADOME_COOKIE_LENGTH = 128;
 
 const defaultMaxApiRetry = 5;
-const defaultMaxRetry = 5;
 
 export type BrowserInitConfig = {
   browserLaunchOptions?: Omit<LaunchOptions, "proxy" | "channel">;
@@ -31,6 +30,7 @@ export class DatadomeHandler extends SDKHelper {
   private blockedRequest: Request | undefined;
   private tagsProcessing: boolean = false;
   private solving: boolean = false;
+  private bvBan: boolean = false;
   private retry: number = 0;
   private mu: Mutex = new Mutex();
   private blockedResponseHandler?: (response: Response) => Promise<void>;
@@ -159,17 +159,25 @@ export class DatadomeHandler extends SDKHelper {
 
           this.log(`Successfully solved datadome! [${pd}]`);
 
+          this.retry = 0;
+
           return;
         } catch (error) {
+          this.retry++;
           this.log(`Error while handling block: ${error}`);
 
           if (!(error instanceof Error)) continue;
           if (error.message.includes("t=bv")) {
-            return; // Don't retry becouse it will just spam
+            this.bvBan = true;
+            throw new Error('t=bv; hard ban, IP/Flow related issue.');
           };
         }
       }
     } finally {
+      if (this.retry == this.maxApiRetry && !this.bvBan) {
+        throw new Error(`Exceeded maximum solving retries: ${this.maxApiRetry}`);
+      }
+
       this.solving = false
     }
   }
@@ -239,15 +247,15 @@ export class DatadomeHandler extends SDKHelper {
               },
             );
 
-            if (!status || status < 200 || status >= 300) {
+            if (!status || status < 200 || status >= 302) {
               this.retry++;
             } else {
               this.retry = 0;
             }
 
-            if (this.retry >= defaultMaxRetry) {
+            if (this.retry >= this.maxApiRetry) {
               throw new Error(
-                `Exceed maximum solving retry: ${defaultMaxRetry}`,
+                `Exceeded maximum blocks: ${this.maxApiRetry}`,
               );
             }
 
@@ -310,8 +318,8 @@ export class DatadomeHandler extends SDKHelper {
           }
 
           // Get the domain from the current page URL
-          const pageUrl = new URL(this.page.url());
-          const domain = pageUrl.hostname;
+          const hostname = await this.getHostname()
+          const domain = hostname
 
           this.log("Solved tags payload.");
 
