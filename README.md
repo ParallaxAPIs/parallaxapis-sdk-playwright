@@ -1,4 +1,4 @@
-# <img src="https://github.com/ParallaxAPIs/.github/blob/main/profile/logo.png" alt="Parallax Logo" width="30" height="30" style="vertical-align: middle;"> ParallaxAPIs Playwright SDK: Datadome & PerimeterX
+# <img src="https://github.com/ParallaxAPIs/.github/blob/main/profile/logo.png" alt="Parallax Logo" width="30" height="30" style="vertical-align: middle;"> ParallaxAPIs SDK - Playwright Library for Bot Protection Bypass (Datadome & PerimeterX)
 
 **Playwright SDK for bypassing DataDome and PerimeterX anti-bot protection.**
 
