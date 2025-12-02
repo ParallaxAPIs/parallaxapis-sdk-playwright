@@ -44,6 +44,15 @@ export class SDKHelper {
     origin: string,
   ) {
     await this.ctx.clearCookies({ name: cookieName });
+    /*
+    //recursive clear in case of multiple cookies with the same name
+    let cookies = await this.ctx.cookies();
+    while (cookies.find(cookie => cookie.name === cookieName)) {
+      await this.ctx.clearCookies({ name: cookieName });
+      cookies = await this.ctx.cookies();
+    }
+    */
+
     await this.ctx.addCookies([
       {
         name: cookieName,

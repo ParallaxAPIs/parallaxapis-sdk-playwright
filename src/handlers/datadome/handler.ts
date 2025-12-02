@@ -290,7 +290,7 @@ export class DatadomeHandler extends SDKHelper {
           }
 
           // If tags generation is disabled, abort the request immediately
-          if (this.disableTagsGeneration || postData.includes(`jsType=le`)) {
+          if (this.disableTagsGeneration || postData.includes(`jsType=le`) || this.solving) {
             return await route.abort();
           }
         } finally {
@@ -326,16 +326,10 @@ export class DatadomeHandler extends SDKHelper {
           await route.abort(); // Always abort the original request
 
           // Set the cookie directly via context
-          await this.ctx.addCookies([{
-            name: 'datadome',
-            value: solveResult.message.split('=')[1],
-            domain: domain,
-            path: '/',
-            secure: true,
-            httpOnly: true,
-            sameSite: 'Lax'
-          }]);
+          const solvedPair = solveResult.message.split(';')[0];
+          const [, cookieValue] = solvedPair.split('=');
 
+          await this.replaceCookie(`datadome`, cookieValue, await this.getOrigin());
         } finally {
           this.tagsProcessing = false;
         }
