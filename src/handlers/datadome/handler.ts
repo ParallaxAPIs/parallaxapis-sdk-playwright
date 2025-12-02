@@ -273,7 +273,7 @@ export class DatadomeHandler extends SDKHelper {
 
   // Blocks datadome collector script, and replaces response body with cookie from an api.
   private async replaceTagsCookie(): Promise<void> {
-    await this.page.route(/\/js\//, async (route) => {
+    await this.page.route(/\/js/, async (route) => {
       try {
         const request = route.request();
         const postData = request.postData();
@@ -283,7 +283,8 @@ export class DatadomeHandler extends SDKHelper {
           if (
             this.tagsProcessing ||
             !postData ||
-            request.method() !== "POST"
+            request.method() !== "POST" ||
+            !postData.includes("&ddk=")
           ) {
             return await route.continue();
           }
