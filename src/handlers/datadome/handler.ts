@@ -318,8 +318,8 @@ export class DatadomeHandler extends SDKHelper {
           }
 
           // Get the domain from the current page URL
-          const hostname = await this.getHostname()
-          const domain = hostname
+          //const hostname = await this.getHostname()
+          //const domain = hostname
 
           this.log("Solved tags payload.");
 

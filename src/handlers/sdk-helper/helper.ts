@@ -43,21 +43,29 @@ export class SDKHelper {
     value: string,
     origin: string,
   ) {
-    await this.ctx.clearCookies({ name: cookieName });
-    /*
-    //recursive clear in case of multiple cookies with the same name
-    let cookies = await this.ctx.cookies();
-    while (cookies.find(cookie => cookie.name === cookieName)) {
-      await this.ctx.clearCookies({ name: cookieName });
-      cookies = await this.ctx.cookies();
-    }
-    */
+    const url = new URL(origin);
+    const domain = url.hostname.split(".").length > 2
+      ? url.hostname.split(".").slice(1).join(".")
+      : url.hostname;
+
+    // Clear cookies only for this specific domain
+    await this.ctx.clearCookies({
+      name: cookieName,
+      domain: `.${domain}`,
+    });
+
+    // Set expiry to 24 hours from now
+    const expiryDate = Math.floor(Date.now() / 1000) + (60 * 60 * 24); // Unix timestamp in seconds
 
     await this.ctx.addCookies([
       {
         name: cookieName,
         value: value,
-        url: origin,
+        domain: `.${domain}`,
+        path: '/',
+        expires: expiryDate, // prevents losing cookie ctx on domain change;
+        secure: true,
+        sameSite: 'Lax', 
       },
     ]);
   }
