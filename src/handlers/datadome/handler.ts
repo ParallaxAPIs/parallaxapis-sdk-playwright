@@ -220,7 +220,6 @@ export class DatadomeHandler extends SDKHelper {
           return;
         }
 
-        //this.log(`[CDP] Intercepted tags request: ${request.url}`);
         const release = await this.mu.acquire();
         if (
           this.tagsProcessing ||
@@ -274,7 +273,6 @@ export class DatadomeHandler extends SDKHelper {
           this.tagsProcessing = false;
         }
       } catch (error) {
-        //this.log(`[CDP] Error: ${error}`);
         try {
           await this.cdpClient.send('Fetch.failRequest', {
             requestId,
@@ -309,7 +307,6 @@ export class DatadomeHandler extends SDKHelper {
       async (route) => {
         try {
           const request = route.request();
-          //this.log(`Intercepted captcha request: ${request.url()}`);
 
           const blockHandlingPromise = this.handleBlock(request.url());
 
@@ -363,7 +360,7 @@ export class DatadomeHandler extends SDKHelper {
   }
 
   // Blocks datadome collector script, and replaces response body with cookie from an api.
-  private async replaceTagsCookie(): Promise<void> {
+  /*private async replaceTagsCookie(): Promise<void> {
     await this.page.route(/\/js/, async (route) => {
       try {
         const request = route.request();
@@ -428,7 +425,7 @@ export class DatadomeHandler extends SDKHelper {
         await route.continue();
       }
     });
-  }
+  }*/
 
   private handleCleanup() {
     this.withBaseCleanup(async () => {
