@@ -182,16 +182,107 @@ export class DatadomeHandler extends SDKHelper {
     }
   }
 
+  private cdpClient: any;
+
   public async proxyTraffic() {
     try {
       this.handleCleanup();
-      this.replaceTagsCookie();
-      this.handleCaptchaRequest();
       this.handleBlockedRoutes();
+      await this.handleCaptchaRequest();
+      await this.replaceTagsCookie_CDP();
     } catch (error) {
       this.log(`Error setting up proxy traffic handlers: ${error}`);
       throw error;
     }
+  }
+
+  private async replaceTagsCookie_CDP() {
+    this.cdpClient = await this.page.context().newCDPSession(this.page);
+
+    await this.cdpClient.send('Fetch.enable', {
+      patterns: [
+        { urlPattern: '*/js', requestStage: 'Request' },
+        { urlPattern: '*/js/*', requestStage: 'Request' }
+      ]
+    });
+
+    this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
+      const { requestId, request } = event;
+
+      try {
+        const postData = request.postData || '';
+        const isTargetRequest =
+          request.method === 'POST' &&
+          postData.includes('&ddk=');
+
+        if (!isTargetRequest) {
+          await this.cdpClient.send('Fetch.continueRequest', { requestId });
+          return;
+        }
+
+        //this.log(`[CDP] Intercepted tags request: ${request.url}`);
+        const release = await this.mu.acquire();
+        if (
+          this.tagsProcessing ||
+          this.disableTagsGeneration ||
+          postData.includes('jsType=le') ||
+          this.solving
+        ) {
+          release();
+          await this.cdpClient.send('Fetch.failRequest', {
+            requestId,
+            errorReason: 'Aborted'
+          });
+          return;
+        }
+
+        this.tagsProcessing = true;
+        release();
+
+        try {
+          const cookies = await this.ctx.cookies();
+          const datadomeCookie = cookies.find(
+            (cookie) => cookie.name == "datadome",
+          );
+
+          const solveResult = await this.sdk.generateDatadomeTagsCookie({
+            site: this.cfg.site,
+            region: this.cfg.region,
+            proxyregion: this.cfg.proxyRegion,
+            proxy: this.cfg.proxy,
+            data: { cid: datadomeCookie?.value || 'null' },
+          });
+
+          if (!solveResult.message) {
+            throw new Error("Generation failed");
+          }
+
+          if (solveResult.message?.includes('tadome=')) {
+            this.log('Solved tags payload.');
+            const solvedPair = solveResult.message.split(';')[0];
+            const [, cookieValue] = solvedPair.split('=');
+            await this.replaceCookie('datadome', cookieValue, await this.getOrigin());
+          } else {
+            throw new Error(solveResult.message);
+          }
+
+          await this.cdpClient.send('Fetch.failRequest', {
+            requestId,
+            errorReason: 'Aborted'
+          });
+        } finally {
+          this.tagsProcessing = false;
+        }
+      } catch (error) {
+        //this.log(`[CDP] Error: ${error}`);
+        try {
+          await this.cdpClient.send('Fetch.failRequest', {
+            requestId,
+            errorReason: 'Aborted'
+          });
+        } catch { }
+      }
+    });
   }
 
   // Saves blocked requests, so we can retry them later
@@ -343,6 +434,13 @@ export class DatadomeHandler extends SDKHelper {
     this.withBaseCleanup(async () => {
       if (this.blockedResponseHandler)
         this.ctx.off("response", this.blockedResponseHandler);
+
+      if (this.cdpClient) {
+        try {
+          await this.cdpClient.send('Fetch.disable');
+          await this.cdpClient.detach();
+        } catch { }
+      }
     });
   }
 
