@@ -38,15 +38,21 @@ export class SDKHelper {
     return u.hostname;
   }
 
+  protected async getDomain(origin: string): Promise<string> {
+    const url = new URL(origin);
+    const domain = url.hostname.split(".").length > 2
+      ? url.hostname.split(".").slice(1).join(".")
+      : url.hostname;
+      
+    return domain;
+  }
+
   protected async replaceCookie(
     cookieName: string,
     value: string,
     origin: string,
   ) {
-    const url = new URL(origin);
-    const domain = url.hostname.split(".").length > 2
-      ? url.hostname.split(".").slice(1).join(".")
-      : url.hostname;
+    const domain = await this.getDomain(origin);
 
     // Clear cookies only for this specific domain
     await this.ctx.clearCookies({
@@ -54,6 +60,14 @@ export class SDKHelper {
       domain: `.${domain}`,
     });
 
+    await this.addCookie(cookieName, value, domain);
+  }
+
+  protected async addCookie(
+    cookieName: string,
+    value: string,
+    domain: string,
+  ) {
     // Set expiry to 24 hours from now
     const expiryDate = Math.floor(Date.now() / 1000) + (60 * 60 * 24); // Unix timestamp in seconds
 
@@ -65,7 +79,7 @@ export class SDKHelper {
         path: '/',
         expires: expiryDate, // prevents losing cookie ctx on domain change;
         secure: true,
-        sameSite: 'Lax', 
+        sameSite: 'Lax',
       },
     ]);
   }

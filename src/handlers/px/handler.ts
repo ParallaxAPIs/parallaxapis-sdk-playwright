@@ -1,4 +1,5 @@
 import { Mutex } from "async-mutex";
+import fs from "fs";
 import type {
   GeneratePxCookiesResponse,
   ResponseGetUsage,
@@ -9,7 +10,6 @@ import {
   type Browser,
   type BrowserContext,
   type Page,
-  type Response,
 } from "playwright";
 import type { Config } from "../../models/config";
 import { HandlerInitValues } from "../../models/init";
@@ -17,10 +17,6 @@ import type { BrowserInitConfig } from "../datadome/handler";
 import { SDKHelper } from "../sdk-helper/helper";
 
 const defaultMaxApiRetry = 5;
-
-const collectorScriptUrlRe = /(?:http|https):\/\/(?=.*px)(?=.*collector).*/i;
-const captchaRequestRe = /https?.*(captcha\.js).*(u=)/i;
-
 const initGenerationIntervalTimeout = 1000 * 60 * 4;
 
 export class PerimeterxHandler extends SDKHelper {
@@ -28,10 +24,12 @@ export class PerimeterxHandler extends SDKHelper {
   private cfg: Config;
   private pxData: GeneratePxCookiesResponse = {} as GeneratePxCookiesResponse;
   private fallbackOrigin: string;
-  private captchaSolvingMu: Mutex = new Mutex();
+  //private captchaSolvingMu: Mutex = new Mutex();
   private initGenerationInterval?: NodeJS.Timeout;
-  private handlers: ((response: Response) => Promise<void>)[] = [];
   private maxApiRetry: number = defaultMaxApiRetry;
+  private solving: boolean = false;
+  private retry: number = 0;
+  private cdpClient: any;
 
   private constructor(
     config: Config,
@@ -80,9 +78,45 @@ export class PerimeterxHandler extends SDKHelper {
         ...browserInitConfig?.browserLaunchOptions,
       });
 
+      //generate first cookie
+      const result = await sdk.generateCookies({
+        proxy: config.proxy,
+        proxyregion: config.proxyRegion,
+        region: config.region,
+        site: config.site,
+      });
+
       const context = await browser.newContext({
+        userAgent: result.UserAgent,
         ...browserInitConfig?.contextLaunchOptions,
       });
+
+      if (!result.cookie.startsWith("HoldCaptcha")) {
+        const [cookieName, cookieValue] = result.cookie.split("=");
+
+        if (!cookieName || !cookieValue)
+          throw new Error("Api responded with malformed cookie");
+
+        const url = new URL(config.websiteUrl);
+        const domain = url.hostname.split(".").length > 2
+          ? url.hostname.split(".").slice(1).join(".")
+          : url.hostname;
+
+        // Set expiry to 24 hours from now
+        const expiryDate = Math.floor(Date.now() / 1000) + (60 * 60 * 24); // Unix timestamp in seconds
+
+        await context.addCookies([
+          {
+            name: cookieName,
+            value: cookieValue,
+            domain: `.${domain}`,
+            path: '/',
+            expires: expiryDate, // prevents losing cookie ctx on domain change;
+            secure: true,
+            sameSite: 'Lax',
+          },
+        ]);
+      }
 
       const page = await context.newPage();
 
@@ -94,6 +128,9 @@ export class PerimeterxHandler extends SDKHelper {
         sdk,
         new URL(config.websiteUrl).origin,
       );
+
+      handler.pxData = result;
+      handler.log("Init generation successful!");
 
       await handler.proxyTraffic();
 
@@ -109,48 +146,78 @@ export class PerimeterxHandler extends SDKHelper {
     }
   }
 
-  private async solveCaptcha() {
-    if (this.captchaSolvingMu.isLocked()) return;
+  private isCollectorRequest(url: string): boolean {
+    try {
+      const parsedUrl = new URL(url);
+      const pathname = parsedUrl.pathname;
+      return (
+        pathname.endsWith('/collector') ||
+        pathname.endsWith('/b/s') ||
+        pathname.includes('/xhr/') ||
+        pathname.includes('/api/')
+      );
+    } catch {
+      return false;
+    }
+  }
 
-    const release = await this.captchaSolvingMu.acquire();
+  private isBundleRequest(url: string): boolean {
+    try {
+      const parsedUrl = new URL(url);
+      const pathname = parsedUrl.pathname;
+      return pathname.endsWith('/bundle') ||
+        pathname.includes('/bundle/') ||
+        pathname.endsWith('/res/uc') ||
+        pathname.includes('/res/uc/');
+    } catch {
+      return false;
+    }
+  }
+
+  private async solveCaptcha() {
+    if (this.solving) return;
 
     try {
+      this.solving = true;
+
       for (let retry = 0; retry < this.maxApiRetry; retry++) {
+        try {
+          this.log("Solving captcha...");
 
+          const result = await this.sdk.generateHoldCaptcha({
+            proxy: this.cfg.proxy,
+            proxyregion: this.cfg.proxyRegion,
+            region: this.cfg.region,
+            site: this.cfg.site,
+            data: this.pxData.data,
+          });
 
-        this.log("Solving captcha...");
+          //this.log("Got captcha response from api!");
 
-        const result = await this.sdk.generateHoldCaptcha({
-          proxy: this.cfg.proxy,
-          proxyregion: this.cfg.proxyRegion,
-          region: this.cfg.region,
-          site: this.cfg.site,
-          data: this.pxData.data,
-        });
+          const [cookieName, cookieValue] = result.cookie.split("=");
 
-        this.log("Got captcha response from api!");
+          if (!cookieName || !cookieValue)
+            throw new Error("Api responded with malformed cookie");
 
-        const [cookieName, cookieValue] = result.cookie.split("=");
+          let origin = await this.getOrigin();
+          if (origin.length === 0) origin = this.fallbackOrigin;
 
-        if (!cookieName || !cookieValue)
-          throw new Error("Api responded with malformed cookie");
+          await this.replaceCookie(cookieName, cookieValue, origin);
 
-        await this.replaceCookie(
-          cookieName,
-          "cookieValue",
-          await this.getOrigin(),
-        );
+          this.log("Captcha solved!");
+          this.retry = 0;
 
-        this.log("Captcha solved!");
-
-        return result;
+          return result;
+        } catch (error) {
+          this.retry++;
+          this.log(`Error solving captcha: ${error}`);
+        }
       }
-    } catch (error) {
-      this.log(`Error solving captcha: ${error}`);
-      throw error;
     } finally {
-      await this.page.reload();
-      release();
+      if (this.retry >= this.maxApiRetry) {
+        throw new Error(`Exceeded maximum solving retries: ${this.maxApiRetry}`);
+      }
+      this.solving = false;
     }
   }
 
@@ -166,17 +233,19 @@ export class PerimeterxHandler extends SDKHelper {
           site: this.cfg.site,
         });
 
-        const [cookieName, cookieValue] = result.cookie.split("=");
+        if (!result.cookie.startsWith("HoldCaptcha")) {
+          const [cookieName, cookieValue] = result.cookie.split("=");
 
-        if (!cookieName || !cookieValue)
-          throw new Error("Api responded with malformed cookie");
+          if (!cookieName || !cookieValue)
+            throw new Error("Api responded with malformed cookie");
 
-        let origin = await this.getOrigin();
-        if (origin.length === 0) origin = this.fallbackOrigin;
+          let origin = await this.getOrigin();
+          if (origin.length === 0) origin = this.fallbackOrigin;
 
-        await this.replaceCookie(cookieName, cookieValue, origin);
+          await this.replaceCookie(cookieName, cookieValue, origin);
+        }
 
-        this.log("Init solved...");
+        this.log("Init generation successful!");
 
         return result;
       }
@@ -188,26 +257,18 @@ export class PerimeterxHandler extends SDKHelper {
 
   private async startInitGenerationInterval() {
     try {
-      const initResult = await this.solveInit()
-
-      if (!initResult) {
-        throw new Error("Api returned empty init result")
-      }
-
-      this.pxData = initResult;
-
       this.page.once("load", async () => {
         this.initGenerationInterval = setInterval(async () => {
           try {
-            const initResult = await this.solveInit()
+            const initResult = await this.solveInit();
 
             if (!initResult) {
-              throw new Error("Api returned empty init result")
+              throw new Error("Api returned empty init result");
             }
 
-            this.pxData = initResult
+            this.pxData = initResult;
           } catch (error) {
-            this.log(`Error while generating inti cookie: ${error}`);
+            this.log(`Error while generating init cookie: ${error}`);
           }
         }, initGenerationIntervalTimeout);
       });
@@ -220,42 +281,83 @@ export class PerimeterxHandler extends SDKHelper {
   public async proxyTraffic() {
     try {
       this.handleCleanup();
-
       await this.startInitGenerationInterval();
-
-      this.handleCaptchaBlockedRoutes();
-      this.handleCollectorScriptsBlock();
+      await this.handleBundleRequest();
+      await this.handleCollectorBlock_CDP();
     } catch (error) {
       this.log(`Error setting up proxy traffic handlers: ${error}`);
       throw error;
     }
   }
 
-  private async handleCaptchaBlockedRoutes() {
-    const handler = async (response: Response) => {
+  private async handleCollectorBlock_CDP() {
+    this.cdpClient = await this.page.context().newCDPSession(this.page);
+
+    await this.cdpClient.send('Fetch.enable', {
+      patterns: [
+        { urlPattern: '*/collector', requestStage: 'Request' },
+        { urlPattern: '*/b/s', requestStage: 'Request' },
+        { urlPattern: '*/collector/*', requestStage: 'Request' }
+      ]
+    });
+
+    this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
+      const { requestId, request } = event;
+
       try {
-        if (!captchaRequestRe.test(response.url())) return;
+        const postData = request.postData || '';
+        const isTargetRequest =
+          request.method === 'POST' &&
+          postData.includes('payload=');
 
-        await this.solveCaptcha();
+        if (this.isCollectorRequest(request.url) && isTargetRequest) {
+          //this.log("Blocked collector request via CDP.");
+          await this.cdpClient.send('Fetch.failRequest', {
+            requestId,
+            errorReason: 'Aborted'
+          });
+          return;
+        }
+
+        await this.cdpClient.send('Fetch.continueRequest', { requestId });
       } catch (error) {
-        this.log(`error while handling captcha blocked route: ${error}`);
-      }
-    };
-
-    this.handlers.push(handler);
-    this.ctx.on("response", handler);
-  }
-
-  // Abort on collector scripts, we don't want them to succeed
-  private async handleCollectorScriptsBlock() {
-    await this.page.route(collectorScriptUrlRe, async (route) => {
-      try {
-        this.log("Blocked collector script.");
-        await route.abort();
-      } catch (error) {
-        this.log(`Error blocking collector script: ${error}`);
+        try {
+          await this.cdpClient.send('Fetch.failRequest', {
+            requestId,
+            errorReason: 'Aborted'
+          });
+        } catch { }
       }
     });
+  }
+
+  private async handleBundleRequest() {
+    const solvingHtml = fs.readFileSync("./assets/solving.html", "utf-8");
+    const solvingDataUrl = `data:text/html;base64,${Buffer.from(solvingHtml).toString('base64')}`;
+
+    await this.page.route(
+      (url) => this.isBundleRequest(url.toString()),
+      async (route) => {
+        try {
+          await route.abort();
+
+          if (this.solving) return;
+
+          //this.log(`Intercepted bundle request: ${route.request().url()}`);
+
+          const currentUrl = this.page.url();
+
+          await this.page.goto(solvingDataUrl);
+
+          await this.solveCaptcha();
+
+          await this.page.goto(currentUrl);
+        } catch (error) {
+          this.log(`Error handling bundle request: ${error}`);
+          throw error;
+        }
+      },
+    );
   }
 
   private handleCleanup() {
@@ -263,10 +365,11 @@ export class PerimeterxHandler extends SDKHelper {
       if (this.initGenerationInterval)
         clearInterval(this.initGenerationInterval);
 
-      if (this.handlers.length > 0) {
-        for (const handler of this.handlers) {
-          this.ctx.off("response", handler);
-        }
+      if (this.cdpClient) {
+        try {
+          await this.cdpClient.send('Fetch.disable');
+          await this.cdpClient.detach();
+        } catch { }
       }
     });
   }
