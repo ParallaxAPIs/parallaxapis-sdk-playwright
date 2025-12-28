@@ -1,6 +1,10 @@
 import { Mutex } from "async-mutex";
-import fs from "fs";
-import { DatadomeSDK, ResponseGetUsage } from "parallaxapis-sdk-ts";
+import {
+  DatadomeSDK,
+  ResponseGetUsage,
+  TaskGenerateDatadomeCookieData,
+  ProductType,
+} from "parallaxapis-sdk-ts";
 import {
   chromium,
   type Browser,
@@ -8,14 +12,10 @@ import {
   type BrowserContextOptions,
   type LaunchOptions,
   type Page,
-  type Request,
-  type Response,
 } from "playwright";
 import type { Config } from "../../models/config";
 import { HandlerInitValues } from "../../models/init";
 import { SDKHelper } from "../sdk-helper/helper";
-
-const DATADOME_COOKIE_LENGTH = 128;
 
 const defaultMaxApiRetry = 5;
 
@@ -27,15 +27,14 @@ export type BrowserInitConfig = {
 export class DatadomeHandler extends SDKHelper {
   private sdk: DatadomeSDK;
   private cfg: Config;
-  private blockedRequest: Request | undefined;
   private tagsProcessing: boolean = false;
   private solving: boolean = false;
   private bvBan: boolean = false;
   private retry: number = 0;
   private mu: Mutex = new Mutex();
-  private blockedResponseHandler?: (response: Response) => Promise<void>;
   private maxApiRetry: number = defaultMaxApiRetry;
   private disableTagsGeneration: boolean = false;
+  private cdpClient: any;
 
   private constructor(
     config: Config,
@@ -56,12 +55,10 @@ export class DatadomeHandler extends SDKHelper {
     this.cfg = config;
     this.sdk = sdk;
 
-    if (config.maxApiRetry) this.maxApiRetry = config.maxApiRetry
+    if (config.maxApiRetry) this.maxApiRetry = config.maxApiRetry;
     if (config.disableTagsGeneration) this.disableTagsGeneration = config.disableTagsGeneration;
   }
 
-
-  // Init function, it handles everything for a user, you can customize a browser launch options, and browser context launch options
   public static async init(
     config: Config,
     browserInitConfig?: BrowserInitConfig,
@@ -113,30 +110,292 @@ export class DatadomeHandler extends SDKHelper {
     }
   }
 
-  // Handles datadome block, like captcha or intersitial.
-  // after solving, sdk retries blocked request and refreshes a page.
-  private async handleBlock(url: string) {
+  public async proxyTraffic() {
+    try {
+      this.handleCleanup();
+      await this.setupCDPInterception();
+    } catch (error) {
+      this.log(`Error setting up proxy traffic handlers: ${error}`);
+      throw error;
+    }
+  }
+
+  private async setupCDPInterception() {
+    this.cdpClient = await this.page.context().newCDPSession(this.page);
+
+    await this.cdpClient.send('Fetch.enable', {
+      patterns: [
+        { urlPattern: '*', requestStage: 'Response', resourceType: 'XHR' },
+        { urlPattern: '*', requestStage: 'Response', resourceType: 'Fetch' },
+        { urlPattern: '*/js', requestStage: 'Request' },
+        { urlPattern: '*/js/*', requestStage: 'Request' },
+        { urlPattern: '*://ct.captcha-delivery.com/c.js*', requestStage: 'Request' },
+        { urlPattern: '*://ct.captcha-delivery.com/i.js*', requestStage: 'Request' },
+      ]
+    });
+
+    this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
+      const { responseStatusCode } = event;
+
+      try {
+        if (responseStatusCode !== undefined) {
+          await this.handleResponseInterception(event);
+        } else {
+          await this.handleRequestInterception(event);
+        }
+      } catch (error) {
+        this.log(`Interception error: ${error}`);
+        throw error;
+        /*try {
+          await this.cdpClient.send('Fetch.continueRequest', { requestId });
+        } catch { }*/
+      }
+    });
+  }
+
+  private async handleResponseInterception(event: any) {
+    const { requestId, request, responseStatusCode } = event;
+
+    if (responseStatusCode !== 403) {
+      await this.cdpClient.send('Fetch.continueRequest', { requestId });
+      return;
+    }
+
+    let body: string;
+    try {
+      const responseBody = await this.cdpClient.send('Fetch.getResponseBody', { requestId });
+      body = responseBody.base64Encoded
+        ? Buffer.from(responseBody.body, 'base64').toString('utf-8')
+        : responseBody.body;
+    } catch (error) {
+      this.log(`Failed to get response body: ${error}`);
+      await this.cdpClient.send('Fetch.continueRequest', { requestId });
+      return;
+    }
+
+    const cookies = await this.ctx.cookies();
+    const datadomeCookie = cookies.find((cookie) => cookie.name === "datadome");
+
+    const [isBlocked, taskData, productType] = await this.sdk.detectChallengeAndParse(
+      body,
+      datadomeCookie?.value || ''
+    );
+
+    if (!isBlocked || !taskData) {
+      await this.cdpClient.send('Fetch.continueRequest', { requestId });
+      return;
+    }
+
+    //this.log(`Intercepted 403 DataDome block for XHR/Fetch: ${request.url}`);
+
+    try {
+      await this.solveChallenge(taskData, productType!);
+
+      const retryResponse = await this.retryRequestWithNewCookie(request);
+
+      await this.cdpClient.send('Fetch.fulfillRequest', {
+        requestId,
+        responseCode: retryResponse.status,
+        responseHeaders: this.formatHeadersForCDP(retryResponse.headers),
+        body: Buffer.from(retryResponse.body).toString('base64'),
+      });
+
+      //this.log(`Successfully fulfilled request with solved response: ${request.url} (status: ${retryResponse.status})`);
+
+    } catch (error) {
+      //this.log(`Failed to solve block, returning original 403: ${error}`);
+      await this.cdpClient.send('Fetch.continueRequest', { requestId });
+      throw error;
+    }
+  }
+
+  private async handleRequestInterception(event: any) {
+    const { requestId, request } = event;
+    const url = request.url;
+
+    if (url.includes('ct.captcha-delivery.com') && (url.includes('/c.js') || url.includes('/i.js'))) {
+      try {
+        await this.handleDocumentLevelBlock(event);
+        return;
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    const postData = request.postData || '';
+    const isTagsRequest = request.method === 'POST' && postData.includes('&ddk=');
+
+    if (!isTagsRequest) {
+      await this.cdpClient.send('Fetch.continueRequest', { requestId });
+      return;
+    }
+
+    const release = await this.mu.acquire();
+    if (
+      this.tagsProcessing ||
+      this.disableTagsGeneration ||
+      postData.includes('jsType=le') ||
+      this.solving
+    ) {
+      release();
+      await this.cdpClient.send('Fetch.failRequest', {
+        requestId,
+        errorReason: 'Aborted'
+      });
+      return;
+    }
+
+    this.tagsProcessing = true;
+    release();
+
+    try {
+      const cookies = await this.ctx.cookies();
+      const datadomeCookie = cookies.find((cookie) => cookie.name === "datadome");
+
+      const solveResult = await this.sdk.generateDatadomeTagsCookie({
+        site: this.cfg.site,
+        region: this.cfg.region,
+        proxyregion: this.cfg.proxyRegion,
+        proxy: this.cfg.proxy,
+        data: { cid: datadomeCookie?.value || 'null' },
+      });
+
+      if (!solveResult.message) {
+        throw new Error("Generation failed");
+      }
+
+      if (solveResult.message?.includes('tadome=')) {
+        this.log('Solved tags payload.');
+        const solvedPair = solveResult.message.split(';')[0];
+        const [, cookieValue] = solvedPair.split('=');
+        await this.replaceCookie('datadome', cookieValue, await this.getOrigin());
+      } else {
+        throw new Error(solveResult.message);
+      }
+
+      await this.cdpClient.send('Fetch.failRequest', {
+        requestId,
+        errorReason: 'Aborted'
+      });
+    } catch (error) {
+      this.log(`Tags generation error: ${error}`);
+      await this.cdpClient.send('Fetch.failRequest', {
+        requestId,
+        errorReason: 'Aborted'
+      });
+    } finally {
+      this.tagsProcessing = false;
+    }
+  }
+
+  private async handleDocumentLevelBlock(event: any) {
+    const { requestId } = event;
+
+    //this.log('Intercepted c.js/i.js - document-level block detected');
+
+    await this.cdpClient.send('Fetch.failRequest', {
+      requestId,
+      errorReason: 'Aborted'
+    });
+
+    try {
+      const ddData = await this.page.evaluate(() => {
+        return (window as any).dd;
+      });
+
+      if (!ddData) {
+        throw new Error('Could not find dd object in page');
+      }
+
+      const cookies = await this.ctx.cookies();
+      const datadomeCookie = cookies.find((cookie) => cookie.name === "datadome");
+
+      const htmlBody = `<html><script>var dd=${JSON.stringify(ddData)}</script></html>`;
+
+      const [taskData, productType] = await this.sdk.parseChallengeHtml(
+        htmlBody,
+        datadomeCookie?.value || ''
+      );
+
+      if (!taskData) {
+        throw new Error('Failed to parse challenge from dd object');
+      }
+
+      await this.solveChallenge(taskData, productType!);
+
+      await this.page.reload();
+
+    } catch (error) {
+      //this.log(`Error handling document-level block: ${error}`);
+      throw error;
+    }
+  }
+
+  private async retryRequestWithNewCookie(originalRequest: any): Promise<{
+    status: number;
+    headers: Record<string, string>;
+    body: string;
+  }> {
+    const cookies = await this.ctx.cookies();
+    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+    const headers: Record<string, string> = { ...originalRequest.headers };
+    headers['cookie'] = cookieHeader;
+
+    const response = await this.page.evaluate(
+      async ({ url, method, headers, postData }) => {
+        try {
+          const resp = await fetch(url, {
+            method,
+            headers,
+            body: postData || undefined,
+            credentials: 'include',
+          });
+
+          const responseHeaders: Record<string, string> = {};
+          resp.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+          });
+
+          const body = await resp.text();
+
+          return {
+            status: resp.status,
+            headers: responseHeaders,
+            body,
+          };
+        } catch (error) {
+          throw new Error(`Retry fetch failed: ${error}`);
+        }
+      },
+      {
+        url: originalRequest.url,
+        method: originalRequest.method,
+        headers,
+        postData: originalRequest.postData,
+      }
+    );
+
+    return response;
+  }
+
+  private formatHeadersForCDP(headers: Record<string, string>): Array<{ name: string; value: string }> {
+    return Object.entries(headers).map(([name, value]) => ({ name, value }));
+  }
+
+  private async solveChallenge(taskData: TaskGenerateDatadomeCookieData, productType: ProductType): Promise<void> {
     if (this.solving) return;
 
     try {
-      this.solving = true
+      this.solving = true;
 
-      for (let retry = 0; retry < this.maxApiRetry; retry++) {
+      for (let retryCount = 0; retryCount < this.maxApiRetry; retryCount++) {
         try {
           this.log("Got blocked, solving datadome...");
 
-          const cookies = await this.ctx.cookies();
-          const datadomeCookie = cookies.find(
-            (cookie) => cookie.name == "datadome",
-          );
-
-          if (!datadomeCookie) throw Error("couldn't find initial datadome cookie");
-
-          const [task, pd] = this.sdk.parseChallengeUrl(url, datadomeCookie.value);
-
           const solveResult = await this.sdk.generateCookie({
-            data: task,
-            pd: pd,
+            data: taskData,
+            pd: productType,
             proxy: this.cfg.proxy,
             proxyregion: this.cfg.proxyRegion,
             region: this.cfg.region,
@@ -157,7 +416,7 @@ export class DatadomeHandler extends SDKHelper {
 
           await this.replaceCookie(cookieName, cookieValue, await this.getOrigin());
 
-          this.log(`Successfully solved datadome! [${pd}]`);
+          this.log(`Successfully solved datadome! [${productType}]`);
 
           this.retry = 0;
 
@@ -170,268 +429,20 @@ export class DatadomeHandler extends SDKHelper {
           if (error.message.includes("t=bv")) {
             this.bvBan = true;
             throw new Error('t=bv; hard ban, IP/Flow related issue.');
-          };
+          }
         }
       }
     } finally {
-      if (this.retry == this.maxApiRetry && !this.bvBan) {
+      if (this.retry === this.maxApiRetry && !this.bvBan) {
         throw new Error(`Exceeded maximum solving retries: ${this.maxApiRetry}`);
       }
 
-      this.solving = false
+      this.solving = false;
     }
   }
-
-  private cdpClient: any;
-
-  public async proxyTraffic() {
-    try {
-      this.handleCleanup();
-      this.handleBlockedRoutes();
-      await this.handleCaptchaRequest();
-      await this.replaceTagsCookie_CDP();
-    } catch (error) {
-      this.log(`Error setting up proxy traffic handlers: ${error}`);
-      throw error;
-    }
-  }
-
-  private async replaceTagsCookie_CDP() {
-    this.cdpClient = await this.page.context().newCDPSession(this.page);
-
-    await this.cdpClient.send('Fetch.enable', {
-      patterns: [
-        { urlPattern: '*/js', requestStage: 'Request' },
-        { urlPattern: '*/js/*', requestStage: 'Request' }
-      ]
-    });
-
-    this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
-      const { requestId, request } = event;
-
-      try {
-        const postData = request.postData || '';
-        const isTargetRequest =
-          request.method === 'POST' &&
-          postData.includes('&ddk=');
-
-        if (!isTargetRequest) {
-          await this.cdpClient.send('Fetch.continueRequest', { requestId });
-          return;
-        }
-
-        const release = await this.mu.acquire();
-        if (
-          this.tagsProcessing ||
-          this.disableTagsGeneration ||
-          postData.includes('jsType=le') ||
-          this.solving
-        ) {
-          release();
-          await this.cdpClient.send('Fetch.failRequest', {
-            requestId,
-            errorReason: 'Aborted'
-          });
-          return;
-        }
-
-        this.tagsProcessing = true;
-        release();
-
-        try {
-          const cookies = await this.ctx.cookies();
-          const datadomeCookie = cookies.find(
-            (cookie) => cookie.name == "datadome",
-          );
-
-          const solveResult = await this.sdk.generateDatadomeTagsCookie({
-            site: this.cfg.site,
-            region: this.cfg.region,
-            proxyregion: this.cfg.proxyRegion,
-            proxy: this.cfg.proxy,
-            data: { cid: datadomeCookie?.value || 'null' },
-          });
-
-          if (!solveResult.message) {
-            throw new Error("Generation failed");
-          }
-
-          if (solveResult.message?.includes('tadome=')) {
-            this.log('Solved tags payload.');
-            const solvedPair = solveResult.message.split(';')[0];
-            const [, cookieValue] = solvedPair.split('=');
-            await this.replaceCookie('datadome', cookieValue, await this.getOrigin());
-          } else {
-            throw new Error(solveResult.message);
-          }
-
-          await this.cdpClient.send('Fetch.failRequest', {
-            requestId,
-            errorReason: 'Aborted'
-          });
-        } finally {
-          this.tagsProcessing = false;
-        }
-      } catch (error) {
-        try {
-          await this.cdpClient.send('Fetch.failRequest', {
-            requestId,
-            errorReason: 'Aborted'
-          });
-        } catch { }
-      }
-    });
-  }
-
-  // Saves blocked requests, so we can retry them later
-  private async handleBlockedRoutes() {
-    this.blockedResponseHandler = async (response: Response) => {
-      try {
-        if (
-          response.status() == 403 &&
-          JSON.stringify(await response.json()).includes("captcha-delivery")
-        ) {
-          this.blockedRequest = response.request();
-        }
-      } catch { }
-    };
-
-    this.ctx.on("response", this.blockedResponseHandler);
-  }
-
-  // Blocks a geo captcha page request, for better flow, solves a challange, and retries blocked request.
-  private async handleCaptchaRequest() {
-    await this.page.route(
-      (url) => url.hostname === 'geo.captcha-delivery.com' &&
-        (url.pathname.includes('/interstitial') || url.pathname.includes('/captcha')),
-      async (route) => {
-        try {
-          const request = route.request();
-
-          const blockHandlingPromise = this.handleBlock(request.url());
-
-          await route.fulfill({
-            body: fs.readFileSync("./assets/solving.html", "utf-8"),
-          });
-
-          await blockHandlingPromise;
-
-          if (this.blockedRequest != undefined) {
-            const status = await this.page.evaluate(
-              async ({ method, headers, postData, url }) => {
-                if (url) {
-                  return await fetch(url, {
-                    method: method,
-                    body: postData,
-                    headers: headers,
-                  }).then((res) => res.status);
-                }
-              },
-              {
-                method: this.blockedRequest.method(),
-                headers: this.blockedRequest.headers(),
-                postData: this.blockedRequest.postData(),
-                url: this.blockedRequest.url(),
-              },
-            );
-
-            if (!status || status < 200 || status >= 302) {
-              this.retry++;
-            } else {
-              this.retry = 0;
-            }
-
-            if (this.retry >= this.maxApiRetry) {
-              throw new Error(
-                `Exceeded maximum blocks: ${this.maxApiRetry}`,
-              );
-            }
-
-            this.blockedRequest = undefined;
-          }
-
-          await this.page.reload();
-        } catch (error) {
-          this.log(`Error handling captcha request: ${error}`);
-          throw error;
-        }
-      },
-    );
-  }
-
-  // Blocks datadome collector script, and replaces response body with cookie from an api.
-  /*private async replaceTagsCookie(): Promise<void> {
-    await this.page.route(/\/js/, async (route) => {
-      try {
-        const request = route.request();
-        const postData = request.postData();
-        const release = await this.mu.acquire();
-
-        try {
-          if (
-            this.tagsProcessing ||
-            !postData ||
-            request.method() !== "POST" ||
-            !postData.includes("&ddk=")
-          ) {
-            return await route.continue();
-          }
-
-          // If tags generation is disabled, abort the request immediately
-          if (this.disableTagsGeneration || postData.includes(`jsType=le`) || this.solving) {
-            return await route.abort();
-          }
-        } finally {
-          release();
-        }
-
-        try {
-          this.tagsProcessing = true;
-
-          const cookies = await this.ctx.cookies();
-          const datadomeCookie = cookies.find(
-            (cookie) => cookie.name == "datadome",
-          );
-
-          const solveResult = await this.sdk.generateDatadomeTagsCookie({
-            site: this.cfg.site,
-            region: this.cfg.region,
-            proxyregion: this.cfg.proxyRegion,
-            proxy: this.cfg.proxy,
-            data: { cid: datadomeCookie?.value || "null" },
-          });
-
-          if (!solveResult.message) {
-            throw new Error("SDK didn't return a cookie value");
-          }
-
-          // Get the domain from the current page URL
-          //const hostname = await this.getHostname()
-          //const domain = hostname
-
-          this.log("Solved tags payload.");
-
-          await route.abort(); // Always abort the original request
-
-          // Set the cookie directly via context
-          const solvedPair = solveResult.message.split(';')[0];
-          const [, cookieValue] = solvedPair.split('=');
-
-          await this.replaceCookie(`datadome`, cookieValue, await this.getOrigin());
-        } finally {
-          this.tagsProcessing = false;
-        }
-      } catch {
-        await route.continue();
-      }
-    });
-  }*/
 
   private handleCleanup() {
     this.withBaseCleanup(async () => {
-      if (this.blockedResponseHandler)
-        this.ctx.off("response", this.blockedResponseHandler);
-
       if (this.cdpClient) {
         try {
           await this.cdpClient.send('Fetch.disable');
