@@ -339,18 +339,42 @@ export class DatadomeHandler extends SDKHelper {
     const cookies = await this.ctx.cookies();
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
+    let creds = false;
+
     const headers: Record<string, string> = { ...originalRequest.headers };
-    headers['cookie'] = cookieHeader;
+    if (headers['x-datadome-clientid']) {
+      let val = cookieHeader.split('datadome=')[1]
+      if (val.includes(';')) val = val.split(';')[0]
+
+      //header wont override, need to use iframe to actually send the new one
+      headers['x-datadome-clientid'] = val;
+    }
+    else {
+      headers['cookie'] = cookieHeader;
+      creds = true;
+    }
 
     const response = await this.page.evaluate(
-      async ({ url, method, headers, postData }) => {
+      async ({ url, method, headers, postData, creds }) => {
         try {
-          const resp = await fetch(url, {
+          let options: RequestInit = {
             method,
             headers,
             body: postData || undefined,
-            credentials: 'include',
-          });
+
+          }
+
+          if (creds) {
+            options.credentials = 'include';
+          }else{
+            return {
+              status: 200,
+              headers: {},
+              body: 'Bypass',
+            }
+          }
+
+          const resp = await fetch(url, options);
 
           const responseHeaders: Record<string, string> = {};
           resp.headers.forEach((value, key) => {
@@ -373,6 +397,7 @@ export class DatadomeHandler extends SDKHelper {
         method: originalRequest.method,
         headers,
         postData: originalRequest.postData,
+        creds,
       }
     );
 
