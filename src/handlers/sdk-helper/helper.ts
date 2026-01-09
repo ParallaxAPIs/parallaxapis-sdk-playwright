@@ -41,7 +41,12 @@ export class SDKHelper {
   protected async getDomain(origin: string): Promise<string> {
     const url = new URL(origin);
     const domain = url.hostname.split(".").length > 2
-      ? url.hostname.split(".").slice(1).join(".")
+      ? (
+          url.hostname
+            .split(".")
+            .slice(-2)
+            .join(".")
+      )
       : url.hostname;
       
     return domain;
