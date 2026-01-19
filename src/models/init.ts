@@ -1,4 +1,4 @@
-import { Browser, BrowserContext, Page } from "patchright"
+import { Browser, BrowserContext, Page } from "playwright"
 
 export type HandlerInitValues<SDKType, HandlerType> = {
     page: Page,
