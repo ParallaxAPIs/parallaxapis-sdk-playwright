@@ -12,7 +12,7 @@ import {
   type BrowserContextOptions,
   type LaunchOptions,
   type Page,
-} from "patchright";
+} from "playwright";
 import type { Config } from "../../models/config";
 import { HandlerInitValues } from "../../models/init";
 import { SDKHelper } from "../sdk-helper/helper";
@@ -299,22 +299,9 @@ export class DatadomeHandler extends SDKHelper {
     });
 
     try {
-      const pageContent = await this.page.content();
-
-      // Look for var dd = {...} pattern
-      const ddMatch = pageContent.match(/var\s+dd\s*=\s*(\{[\s\S]*?\})/);
-
-      let ddData;
-      if (ddMatch) {
-        try {
-          ddData = JSON.parse(ddMatch[1]);
-        } catch {
-          // If JSON parse fails, evaluate it
-          ddData = await this.page.evaluate((ddStr) => {
-            return eval(`(${ddStr})`);
-          }, ddMatch[1]);
-        }
-      }
+      const ddData = await this.page.evaluate(() => {
+        return (window as any).dd;
+      });
 
       if (!ddData) {
         throw new Error('Could not find dd object in page');
@@ -379,7 +366,7 @@ export class DatadomeHandler extends SDKHelper {
 
           if (creds) {
             options.credentials = 'include';
-          } else {
+          }else{
             return {
               status: 200,
               headers: {},
