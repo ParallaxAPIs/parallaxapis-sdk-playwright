@@ -1,4 +1,4 @@
-import type { Browser, BrowserContext, Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "patchright";
 
 export class SDKHelper {
   private disableLogging?: boolean;
@@ -40,11 +40,14 @@ export class SDKHelper {
 
   protected async getDomain(origin: string): Promise<string> {
     const url = new URL(origin);
+
+    const sliceAmt = url.hostname.includes("co.uk") ? -3 : -2;
+
     const domain = url.hostname.split(".").length > 2
       ? (
           url.hostname
             .split(".")
-            .slice(-2)
+            .slice(sliceAmt)
             .join(".")
       )
       : url.hostname;
