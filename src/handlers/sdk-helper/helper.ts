@@ -1,4 +1,4 @@
-import type { Browser, BrowserContext, Page } from "patchright";
+import type { Browser, BrowserContext, Page } from "playwright";
 
 export class SDKHelper {
   private disableLogging?: boolean;
