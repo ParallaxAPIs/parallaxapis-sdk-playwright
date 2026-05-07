@@ -74,7 +74,7 @@ export class DatadomeHandler extends SDKHelper {
 
       const browser = await chromium.launch({
         proxy: {
-          server: `${proxyUrl.hostname}:${proxyUrl.port}`,
+          server: `${proxyUrl.protocol}//${proxyUrl.hostname}:${proxyUrl.port}`,
           password: proxyUrl.password,
           username: proxyUrl.username,
         },
@@ -123,16 +123,20 @@ export class DatadomeHandler extends SDKHelper {
   private async setupCDPInterception() {
     this.cdpClient = await this.page.context().newCDPSession(this.page);
 
-    await this.cdpClient.send('Fetch.enable', {
-      patterns: [
-        { urlPattern: '*', requestStage: 'Response', resourceType: 'XHR' },
-        { urlPattern: '*', requestStage: 'Response', resourceType: 'Fetch' },
-        { urlPattern: '*/js', requestStage: 'Request' },
-        { urlPattern: '*/js/*', requestStage: 'Request' },
-        { urlPattern: '*://ct.captcha-delivery.com/c.js*', requestStage: 'Request' },
-        { urlPattern: '*://ct.captcha-delivery.com/i.js*', requestStage: 'Request' },
-      ]
-    });
+    const enableFetch = async () => {
+      await this.cdpClient.send('Fetch.enable', {
+        patterns: [
+          { urlPattern: '*', requestStage: 'Response', resourceType: 'XHR' },
+          { urlPattern: '*', requestStage: 'Response', resourceType: 'Fetch' },
+          { urlPattern: '*/js', requestStage: 'Request' },
+          { urlPattern: '*/js/*', requestStage: 'Request' },
+          { urlPattern: '*://ct.captcha-delivery.com/c.js*', requestStage: 'Request' },
+          { urlPattern: '*://ct.captcha-delivery.com/i.js*', requestStage: 'Request' },
+        ]
+      });
+    };
+
+    this.page.once('load', () => enableFetch().catch(() => {}));
 
     this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
       const { responseStatusCode } = event;

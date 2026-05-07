@@ -70,7 +70,7 @@ export class PerimeterxHandler extends SDKHelper {
 
       const browser = await chromium.launch({
         proxy: {
-          server: `${proxyUrl.hostname}:${proxyUrl.port}`,
+          server: `${proxyUrl.protocol}//${proxyUrl.hostname}:${proxyUrl.port}`,
           password: proxyUrl.password,
           username: proxyUrl.username,
         },
@@ -293,13 +293,17 @@ export class PerimeterxHandler extends SDKHelper {
   private async handleCollectorBlock_CDP() {
     this.cdpClient = await this.page.context().newCDPSession(this.page);
 
-    await this.cdpClient.send('Fetch.enable', {
-      patterns: [
-        { urlPattern: '*/collector', requestStage: 'Request' },
-        { urlPattern: '*/b/s', requestStage: 'Request' },
-        { urlPattern: '*/collector/*', requestStage: 'Request' }
-      ]
-    });
+    const enableFetch = async () => {
+      await this.cdpClient.send('Fetch.enable', {
+        patterns: [
+          { urlPattern: '*/collector', requestStage: 'Request' },
+          { urlPattern: '*/b/s', requestStage: 'Request' },
+          { urlPattern: '*/collector/*', requestStage: 'Request' }
+        ]
+      });
+    };
+
+    this.page.once('load', () => enableFetch().catch(() => {}));
 
     this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
       const { requestId, request } = event;
