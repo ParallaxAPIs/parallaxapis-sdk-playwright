@@ -136,7 +136,9 @@ export class DatadomeHandler extends SDKHelper {
       });
     };
 
-    this.page.once('load', () => enableFetch().catch(() => {}));
+    this.page.on('framenavigated', (frame) => {
+      if (frame === this.page.mainFrame()) enableFetch().catch(() => {});
+    });
 
     this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
       const { responseStatusCode } = event;
