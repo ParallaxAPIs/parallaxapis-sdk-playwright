@@ -94,6 +94,13 @@ export class DatadomeHandler extends SDKHelper {
       });
 
       const page = await context.newPage();
+
+      // Pre-warm the proxy connect handshake so credentials are cached before CDP (otherwise auth errors may occur)
+      // page.evaluate keeps the page URL at about:blank! (so no navigation history entry)
+      await page.evaluate(async () => {//any url works here (recommending a cheap one! (to save time))
+        await fetch('https://parallaxapis.com/robots.txt', { cache: 'no-store' }).catch(() => { });
+      }).catch(() => { });
+
       const handler = new DatadomeHandler(config, context, page, browser, sdk);
 
       await handler.proxyTraffic();
@@ -123,22 +130,18 @@ export class DatadomeHandler extends SDKHelper {
   private async setupCDPInterception() {
     this.cdpClient = await this.page.context().newCDPSession(this.page);
 
-    const enableFetch = async () => {
-      await this.cdpClient.send('Fetch.enable', {
-        patterns: [
-          { urlPattern: '*', requestStage: 'Response', resourceType: 'XHR' },
-          { urlPattern: '*', requestStage: 'Response', resourceType: 'Fetch' },
-          { urlPattern: '*/js', requestStage: 'Request' },
-          { urlPattern: '*/js/*', requestStage: 'Request' },
-          { urlPattern: '*://ct.captcha-delivery.com/c.js*', requestStage: 'Request' },
-          { urlPattern: '*://ct.captcha-delivery.com/i.js*', requestStage: 'Request' },
-        ]
-      });
-    };
+    const fetchPatterns = [
+      { urlPattern: '*', requestStage: 'Response', resourceType: 'XHR' },
+      { urlPattern: '*', requestStage: 'Response', resourceType: 'Fetch' },
+      { urlPattern: '*/js', requestStage: 'Request' },
+      { urlPattern: '*/js/*', requestStage: 'Request' },
+      { urlPattern: '*://ct.captcha-delivery.com/c.js*', requestStage: 'Request' },
+      { urlPattern: '*://ct.captcha-delivery.com/i.js*', requestStage: 'Request' },
+    ];
 
-    this.page.on('framenavigated', (frame) => {
-      if (frame === this.page.mainFrame()) enableFetch().catch(() => {});
-    });
+    const enableFetch = async () => {
+      await this.cdpClient.send('Fetch.enable', { patterns: fetchPatterns });
+    };
 
     this.cdpClient.on('Fetch.requestPaused', async (event: any) => {
       const { responseStatusCode } = event;
@@ -152,11 +155,15 @@ export class DatadomeHandler extends SDKHelper {
       } catch (error) {
         this.log(`Interception error: ${error}`);
         throw error;
-        /*try {
-          await this.cdpClient.send('Fetch.continueRequest', { requestId });
-        } catch { }*/
+        /*try { await this.cdpClient.send('Fetch.continueRequest', { requestId }); } catch { }*/
       }
     });
+
+    await enableFetch();
+
+    /*this.page.on('framenavigated', (frame) => {
+      if (frame === this.page.mainFrame()) enableFetch().catch(() => { });
+    });*/
   }
 
   private async handleResponseInterception(event: any) {
@@ -329,7 +336,7 @@ export class DatadomeHandler extends SDKHelper {
 
       await this.solveChallenge(taskData, productType!);
 
-      await this.page.reload();
+      await this.page.reload({ waitUntil: 'domcontentloaded' });
 
     } catch (error) {
       //this.log(`Error handling document-level block: ${error}`);
@@ -372,7 +379,7 @@ export class DatadomeHandler extends SDKHelper {
 
           if (creds) {
             options.credentials = 'include';
-          }else{
+          } else {
             return {
               status: 200,
               headers: {},
